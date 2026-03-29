@@ -41,6 +41,9 @@ impl Prism {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::Playback(message) => match self.playback.update(message) {
+                playback::Event::None => Task::none(),
+            },
             Message::Toolbar(message) => match self.toolbar.update(message) {
                 toolbar::Event::None => Task::none(),
                 toolbar::Event::Performed(task) => task.map(Message::Toolbar),
@@ -60,7 +63,7 @@ impl Prism {
 
     fn view(&self) -> Element<'_, Message> {
         column![
-            self.playback.view().map(|message| match message {}),
+            self.playback.view().map(Message::Playback),
             self.toolbar.view().map(Message::Toolbar),
             self.track_list.view().map(Message::TrackList),
         ]
@@ -70,6 +73,7 @@ impl Prism {
 
 #[derive(Clone, Debug)]
 pub enum Message {
+    Playback(playback::Message),
     Toolbar(toolbar::Message),
     TrackList(track_list::Message),
 }

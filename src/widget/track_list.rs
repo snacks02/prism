@@ -86,10 +86,12 @@ impl TrackList {
                         .wrapping(Wrapping::None),
                 ])
                 .style(move |theme: &iced::Theme| container::Style {
-                    background: match (is_active, is_selected) {
-                        (_, true) => Some(theme.extended_palette().primary.weak.color.into()),
-                        (true, _) => Some(theme.extended_palette().primary.strong.color.into()),
-                        _ => None,
+                    background: if is_active {
+                        Some(theme.extended_palette().primary.strong.color.into())
+                    } else if is_selected {
+                        Some(theme.extended_palette().primary.weak.color.into())
+                    } else {
+                        None
                     },
                     ..container::Style::default()
                 })

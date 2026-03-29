@@ -1,0 +1,10 @@
+[package]
+edition = "2024"
+name = "prism"
+version = "0.1.0"
+
+[dependencies]
+iced = { features = ["svg", "smol"], version = "0.14" }
+lofty = "0.23"
+rfd = "0.17"
+walkdir = "2.5"

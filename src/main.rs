@@ -43,7 +43,7 @@ impl Prism {
         match message {
             Message::Toolbar(message) => match self.toolbar.update(message) {
                 toolbar::Event::None => Task::none(),
-                toolbar::Event::Run(task) => task.map(Message::Toolbar),
+                toolbar::Event::Performed(task) => task.map(Message::Toolbar),
                 toolbar::Event::TrackListExtended(tracks) => {
                     let _ = self
                         .track_list

@@ -63,7 +63,7 @@ impl Toolbar {
     #[must_use]
     pub fn update(&mut self, message: Message) -> Event {
         match message {
-            Message::FileOpen => Event::Run(Task::perform(
+            Message::FileOpen => Event::Performed(Task::perform(
                 async {
                     rfd::AsyncFileDialog::new()
                         .pick_file()
@@ -72,7 +72,7 @@ impl Toolbar {
                 },
                 Message::PathPick,
             )),
-            Message::FolderOpen => Event::Run(Task::perform(
+            Message::FolderOpen => Event::Performed(Task::perform(
                 async {
                     rfd::AsyncFileDialog::new()
                         .pick_folder()
@@ -82,7 +82,7 @@ impl Toolbar {
                 Message::PathPick,
             )),
             Message::PathPick(None) => Event::None,
-            Message::PathPick(Some(path)) => Event::Run(Task::perform(
+            Message::PathPick(Some(path)) => Event::Performed(Task::perform(
                 async move {
                     if path.is_dir() {
                         track::from_directory(&path)
@@ -111,7 +111,7 @@ impl Toolbar {
 
 pub enum Event {
     None,
-    Run(Task<Message>),
+    Performed(Task<Message>),
     TrackListExtended(Vec<Track>),
 }
 

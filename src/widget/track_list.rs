@@ -15,11 +15,35 @@ use iced::{
 };
 use std::collections::HashSet;
 
+fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize) {
+    if track_list.tracks.is_empty() {
+        return;
+    }
+    let index = match track_list.arrow_shift_index.or(track_list.anchor) {
+        Some(current) => step(current, track_list.tracks.len()),
+        None => 0,
+    };
+    if track_list.modifiers.shift() {
+        track_list.arrow_shift_index = Some(index);
+        let anchor = track_list.anchor.unwrap_or(index);
+        track_list.selected.clear();
+        track_list
+            .selected
+            .extend(anchor.min(index)..=anchor.max(index));
+    } else {
+        track_list.anchor = Some(index);
+        track_list.arrow_shift_index = None;
+        track_list.selected.clear();
+        track_list.selected.insert(index);
+    }
+}
+
 impl TrackList {
     pub fn new() -> Self {
         Self {
             active: None,
             anchor: None,
+            arrow_shift_index: None,
             modifiers: Modifiers::default(),
             selected: HashSet::new(),
             tracks: vec![],
@@ -29,6 +53,14 @@ impl TrackList {
     #[must_use]
     pub fn update(&mut self, message: Message) -> Event {
         match message {
+            Message::ArrowDownPress => {
+                arrow_press(self, |index, length| (index + 1).min(length - 1));
+                Event::None
+            }
+            Message::ArrowUpPress => {
+                arrow_press(self, |index, _| index.saturating_sub(1));
+                Event::None
+            }
             Message::ModifiersChange(modifiers) => {
                 self.modifiers = modifiers;
                 Event::None
@@ -47,16 +79,19 @@ impl TrackList {
                     if !self.modifiers.control() {
                         self.selected.clear();
                     }
+                    self.arrow_shift_index = Some(index);
                     self.selected.extend(anchor.min(index)..=anchor.max(index));
                 } else if self.modifiers.control() {
                     if !self.selected.remove(&index) {
                         self.selected.insert(index);
                     }
                     self.anchor = Some(index);
+                    self.arrow_shift_index = None;
                 } else {
                     self.selected.clear();
                     self.selected.insert(index);
                     self.anchor = Some(index);
+                    self.arrow_shift_index = None;
                 }
                 Event::None
             }
@@ -113,6 +148,8 @@ pub enum Event {
 
 #[derive(Clone, Debug)]
 pub enum Message {
+    ArrowDownPress,
+    ArrowUpPress,
     ModifiersChange(Modifiers),
     TrackActivate(usize),
     TrackListExtend(Vec<Track>),
@@ -122,6 +159,7 @@ pub enum Message {
 pub struct TrackList {
     active: Option<usize>,
     anchor: Option<usize>,
+    arrow_shift_index: Option<usize>,
     modifiers: Modifiers,
     selected: HashSet<usize>,
     tracks: Vec<Track>,

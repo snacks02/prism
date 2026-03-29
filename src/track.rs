@@ -1,10 +1,12 @@
-use lofty::config::ParseOptions;
-use lofty::prelude::{
-    Accessor,
-    TaggedFileExt,
-};
-use lofty::probe::Probe;
+use std::fs::File;
 use std::path::Path;
+use symphonia::core::formats::FormatOptions;
+use symphonia::core::io::MediaSourceStream;
+use symphonia::core::meta::{
+    MetadataOptions,
+    StandardTagKey,
+};
+use symphonia::core::probe::Hint;
 use walkdir::WalkDir;
 
 pub fn from_directory(directory: &Path) -> Vec<Track> {
@@ -21,24 +23,43 @@ pub fn from_file(path: &Path) -> Option<Track> {
         .file_stem()
         .and_then(|stem| stem.to_str())
         .unwrap_or("Unknown")
-        .to_owned();
-    let tagged_file = Probe::open(path)
-        .ok()?
-        .options(ParseOptions::new().read_cover_art(false))
-        .read()
+        .to_string();
+    let file = File::open(path).ok()?;
+
+    let mut probe_result = symphonia::default::get_probe()
+        .format(
+            &Hint::new(),
+            MediaSourceStream::new(Box::new(file), Default::default()),
+            &FormatOptions::default(),
+            &MetadataOptions::default(),
+        )
         .ok()?;
-    let tag = tagged_file
-        .primary_tag()
-        .or_else(|| tagged_file.first_tag());
-    let album = tag
-        .and_then(|tag| tag.album().map(|value| value.into_owned()))
-        .unwrap_or_else(|| "Unknown".to_owned());
-    let artist = tag
-        .and_then(|tag| tag.artist().map(|value| value.into_owned()))
-        .unwrap_or_else(|| "Unknown".to_owned());
-    let title = tag
-        .and_then(|tag| tag.title().map(|value| value.into_owned()))
-        .unwrap_or(fallback_title);
+
+    let format_tags = probe_result
+        .format
+        .metadata()
+        .current()
+        .map(|revision| revision.tags().to_vec())
+        .unwrap_or_default();
+    let probe_tags = probe_result
+        .metadata
+        .get()
+        .and_then(|metadata| metadata.current().map(|revision| revision.tags().to_vec()))
+        .unwrap_or_default();
+
+    let mut album = "Unknown".to_string();
+    let mut artist = "Unknown".to_string();
+    let mut title = fallback_title;
+
+    for tag in format_tags.iter().chain(probe_tags.iter()) {
+        match tag.std_key {
+            Some(StandardTagKey::TrackTitle) => title = tag.value.to_string(),
+            Some(StandardTagKey::Album) => album = tag.value.to_string(),
+            Some(StandardTagKey::Artist) => artist = tag.value.to_string(),
+            _ => {}
+        }
+    }
+
     Some(Track {
         album,
         artist,

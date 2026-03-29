@@ -15,6 +15,11 @@ use iced::{
 };
 use std::collections::HashSet;
 
+fn activate_track(index: usize, track_list: &mut TrackList) -> Event {
+    track_list.active = Some(index);
+    Event::TrackActivated(track_list.tracks[index].clone())
+}
+
 fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize) {
     if track_list.tracks.is_empty() {
         return;
@@ -65,10 +70,23 @@ impl TrackList {
                 self.modifiers = modifiers;
                 Event::None
             }
-            Message::TrackActivate(index) => {
-                self.active = Some(index);
-                Event::TrackActivated(index)
+            Message::Next => {
+                if self.tracks.is_empty() {
+                    return Event::None;
+                }
+                let index = self
+                    .active
+                    .map_or(0, |index| (index + 1).min(self.tracks.len() - 1));
+                activate_track(index, self)
             }
+            Message::Previous => {
+                if self.tracks.is_empty() {
+                    return Event::None;
+                }
+                let index = self.active.map_or(0, |index| index.saturating_sub(1));
+                activate_track(index, self)
+            }
+            Message::TrackActivate(index) => activate_track(index, self),
             Message::TrackListExtend(tracks) => {
                 self.tracks.extend(tracks);
                 Event::None
@@ -143,7 +161,7 @@ impl TrackList {
 
 pub enum Event {
     None,
-    TrackActivated(usize),
+    TrackActivated(Track),
 }
 
 #[derive(Clone, Debug)]
@@ -151,6 +169,8 @@ pub enum Message {
     ArrowDownPress,
     ArrowUpPress,
     ModifiersChange(Modifiers),
+    Next,
+    Previous,
     TrackActivate(usize),
     TrackListExtend(Vec<Track>),
     TrackSelect(usize),

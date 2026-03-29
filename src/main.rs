@@ -51,7 +51,11 @@ impl Prism {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Playback(message) => match self.playback.update(message) {
+                playback::Event::Next => self.update(Message::TrackList(track_list::Message::Next)),
                 playback::Event::None => Task::none(),
+                playback::Event::Previous => {
+                    self.update(Message::TrackList(track_list::Message::Previous))
+                }
             },
             Message::Toolbar(message) => match self.toolbar.update(message) {
                 toolbar::Event::None => Task::none(),
@@ -65,7 +69,10 @@ impl Prism {
             },
             Message::TrackList(message) => match self.track_list.update(message) {
                 track_list::Event::None => Task::none(),
-                track_list::Event::TrackActivated(_index) => Task::none(),
+                track_list::Event::TrackActivated(track) => {
+                    let _ = self.playback.update(playback::Message::Play(track));
+                    Task::none()
+                }
             },
         }
     }

@@ -29,41 +29,21 @@ fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize)
         None => 0,
     };
     if track_list.keyboard_modifiers.shift() {
-        track_list.shift_arrow_index = Some(index);
-        let anchor = track_list.anchor.unwrap_or(index);
-        if !track_list.keyboard_modifiers.control() {
-            track_list.selected.clear();
-        }
-        track_list
-            .selected
-            .extend(anchor.min(index)..=anchor.max(index));
+        track_select_shift(index, track_list);
     } else {
-        track_list.anchor = Some(index);
-        track_list.selected.clear();
-        track_list.selected.insert(index);
-        track_list.shift_arrow_index = None;
+        track_select_single(index, track_list);
     }
 }
 
 fn track_activate(index: usize, track_list: &mut TrackList) -> Event {
     track_list.active = Some(index);
-    track_list.anchor = Some(index);
-    track_list.selected.clear();
-    track_list.selected.insert(index);
-    track_list.shift_arrow_index = None;
+    track_select_single(index, track_list);
     Event::TrackActivated(track_list.tracks[index].clone())
 }
 
 fn track_select(index: usize, track_list: &mut TrackList) {
     if track_list.keyboard_modifiers.shift() {
-        let anchor = track_list.anchor.unwrap_or(index);
-        if !track_list.keyboard_modifiers.control() {
-            track_list.selected.clear();
-        }
-        track_list.shift_arrow_index = Some(index);
-        track_list
-            .selected
-            .extend(anchor.min(index)..=anchor.max(index));
+        track_select_shift(index, track_list);
     } else if track_list.keyboard_modifiers.control() {
         if !track_list.selected.remove(&index) {
             track_list.selected.insert(index);
@@ -71,11 +51,26 @@ fn track_select(index: usize, track_list: &mut TrackList) {
         track_list.anchor = Some(index);
         track_list.shift_arrow_index = None;
     } else {
-        track_list.anchor = Some(index);
-        track_list.selected.clear();
-        track_list.selected.insert(index);
-        track_list.shift_arrow_index = None;
+        track_select_single(index, track_list);
     }
+}
+
+fn track_select_shift(index: usize, track_list: &mut TrackList) {
+    if !track_list.keyboard_modifiers.control() {
+        track_list.selected.clear();
+    }
+    let anchor = track_list.anchor.unwrap_or(index);
+    track_list
+        .selected
+        .extend(anchor.min(index)..=anchor.max(index));
+    track_list.shift_arrow_index = Some(index);
+}
+
+fn track_select_single(index: usize, track_list: &mut TrackList) {
+    track_list.anchor = Some(index);
+    track_list.selected.clear();
+    track_list.selected.insert(index);
+    track_list.shift_arrow_index = None;
 }
 
 impl TrackList {

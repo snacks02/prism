@@ -91,6 +91,7 @@ impl TrackList {
                     Some(Message::ArrowDownPress)
                 }
                 keyboard::Key::Named(keyboard::key::Named::ArrowUp) => Some(Message::ArrowUpPress),
+                keyboard::Key::Named(keyboard::key::Named::Enter) => Some(Message::EnterPress),
                 _ => None,
             },
             iced::Event::Keyboard(keyboard::Event::ModifiersChanged(keyboard_modifiers)) => {
@@ -111,6 +112,10 @@ impl TrackList {
                 arrow_press(self, |index, _| index.saturating_sub(1));
                 Event::None
             }
+            Message::EnterPress => match self.anchor {
+                Some(index) => track_activate(index, self),
+                None => Event::None,
+            },
             Message::KeyboardModifiersChange(keyboard_modifiers) => {
                 self.keyboard_modifiers = keyboard_modifiers;
                 Event::None
@@ -207,6 +212,7 @@ pub enum Event {
 pub enum Message {
     ArrowDownPress,
     ArrowUpPress,
+    EnterPress,
     KeyboardModifiersChange(keyboard::Modifiers),
     NextPress,
     PreviousPress,

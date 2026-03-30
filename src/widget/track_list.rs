@@ -20,11 +20,6 @@ use iced::{
 };
 use std::collections::HashSet;
 
-fn activate_track(index: usize, track_list: &mut TrackList) -> Event {
-    track_list.active = Some(index);
-    Event::TrackActivated(track_list.tracks[index].clone())
-}
-
 fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize) {
     if track_list.tracks.is_empty() {
         return;
@@ -40,6 +35,35 @@ fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize)
         track_list
             .selected
             .extend(anchor.min(index)..=anchor.max(index));
+    } else {
+        track_list.anchor = Some(index);
+        track_list.selected.clear();
+        track_list.selected.insert(index);
+        track_list.shift_arrow_index = None;
+    }
+}
+
+fn track_activate(index: usize, track_list: &mut TrackList) -> Event {
+    track_list.active = Some(index);
+    Event::TrackActivated(track_list.tracks[index].clone())
+}
+
+fn track_select(index: usize, track_list: &mut TrackList) {
+    if track_list.keyboard_modifiers.shift() {
+        let anchor = track_list.anchor.unwrap_or(index);
+        if !track_list.keyboard_modifiers.control() {
+            track_list.selected.clear();
+        }
+        track_list.shift_arrow_index = Some(index);
+        track_list
+            .selected
+            .extend(anchor.min(index)..=anchor.max(index));
+    } else if track_list.keyboard_modifiers.control() {
+        if !track_list.selected.remove(&index) {
+            track_list.selected.insert(index);
+        }
+        track_list.anchor = Some(index);
+        track_list.shift_arrow_index = None;
     } else {
         track_list.anchor = Some(index);
         track_list.selected.clear();
@@ -98,40 +122,22 @@ impl TrackList {
                 let index = self
                     .active
                     .map_or(0, |index| (index + 1).min(self.tracks.len() - 1));
-                activate_track(index, self)
+                track_activate(index, self)
             }
             Message::PreviousPress => {
                 if self.tracks.is_empty() {
                     return Event::None;
                 }
                 let index = self.active.map_or(0, |index| index.saturating_sub(1));
-                activate_track(index, self)
+                track_activate(index, self)
             }
-            Message::TrackDoubleClick(index) => activate_track(index, self),
+            Message::TrackDoubleClick(index) => track_activate(index, self),
             Message::TrackListExtend(tracks) => {
                 self.tracks.extend(tracks);
                 Event::None
             }
             Message::TrackPress(index) => {
-                if self.keyboard_modifiers.shift() {
-                    let anchor = self.anchor.unwrap_or(index);
-                    if !self.keyboard_modifiers.control() {
-                        self.selected.clear();
-                    }
-                    self.shift_arrow_index = Some(index);
-                    self.selected.extend(anchor.min(index)..=anchor.max(index));
-                } else if self.keyboard_modifiers.control() {
-                    if !self.selected.remove(&index) {
-                        self.selected.insert(index);
-                    }
-                    self.anchor = Some(index);
-                    self.shift_arrow_index = None;
-                } else {
-                    self.anchor = Some(index);
-                    self.selected.clear();
-                    self.selected.insert(index);
-                    self.shift_arrow_index = None;
-                }
+                track_select(index, self);
                 Event::None
             }
         }

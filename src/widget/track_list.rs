@@ -45,6 +45,10 @@ fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize)
 
 fn track_activate(index: usize, track_list: &mut TrackList) -> Event {
     track_list.active = Some(index);
+    track_list.anchor = Some(index);
+    track_list.selected.clear();
+    track_list.selected.insert(index);
+    track_list.shift_arrow_index = None;
     Event::TrackActivated(track_list.tracks[index].clone())
 }
 

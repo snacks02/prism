@@ -31,7 +31,9 @@ fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize)
     if track_list.keyboard_modifiers.shift() {
         track_list.shift_arrow_index = Some(index);
         let anchor = track_list.anchor.unwrap_or(index);
-        track_list.selected.clear();
+        if !track_list.keyboard_modifiers.control() {
+            track_list.selected.clear();
+        }
         track_list
             .selected
             .extend(anchor.min(index)..=anchor.max(index));

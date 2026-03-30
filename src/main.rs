@@ -4,7 +4,6 @@ mod widget;
 use iced::widget::column;
 use iced::{
     Element,
-    Event,
     Subscription,
     Task,
 };
@@ -33,21 +32,7 @@ impl Prism {
     fn subscription(&self) -> Subscription<Message> {
         Subscription::batch([
             self.playback.subscription().map(Message::Playback),
-            iced::event::listen_with(|event, _status, _window| match event {
-                Event::Keyboard(iced::keyboard::Event::KeyPressed { key, .. }) => match key {
-                    iced::keyboard::Key::Named(iced::keyboard::key::Named::ArrowDown) => {
-                        Some(Message::TrackList(track_list::Message::ArrowDownPress))
-                    }
-                    iced::keyboard::Key::Named(iced::keyboard::key::Named::ArrowUp) => {
-                        Some(Message::TrackList(track_list::Message::ArrowUpPress))
-                    }
-                    _ => None,
-                },
-                Event::Keyboard(iced::keyboard::Event::ModifiersChanged(modifiers)) => Some(
-                    Message::TrackList(track_list::Message::ModifiersChange(modifiers)),
-                ),
-                _ => None,
-            }),
+            self.track_list.subscription().map(Message::TrackList),
         ])
     }
 

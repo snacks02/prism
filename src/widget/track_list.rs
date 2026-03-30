@@ -1,5 +1,6 @@
 use crate::track::Track;
-use iced::keyboard::Modifiers;
+use iced::event;
+use iced::keyboard;
 use iced::widget::text::Wrapping;
 use iced::widget::{
     column,
@@ -12,6 +13,7 @@ use iced::widget::{
 use iced::{
     Element,
     Length,
+    Subscription,
 };
 use std::collections::HashSet;
 
@@ -28,7 +30,7 @@ fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize)
         Some(current) => step(current, track_list.tracks.len()),
         None => 0,
     };
-    if track_list.modifiers.shift() {
+    if track_list.keyboard_modifiers.shift() {
         track_list.shift_arrow_index = Some(index);
         let anchor = track_list.anchor.unwrap_or(index);
         track_list.selected.clear();
@@ -48,11 +50,27 @@ impl TrackList {
         Self {
             active: None,
             anchor: None,
-            modifiers: Modifiers::default(),
+            keyboard_modifiers: keyboard::Modifiers::default(),
             selected: HashSet::new(),
             shift_arrow_index: None,
             tracks: vec![],
         }
+    }
+
+    pub fn subscription(&self) -> Subscription<Message> {
+        event::listen_with(|event, _status, _window| match event {
+            iced::Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) => match key {
+                keyboard::Key::Named(keyboard::key::Named::ArrowDown) => {
+                    Some(Message::ArrowDownPress)
+                }
+                keyboard::Key::Named(keyboard::key::Named::ArrowUp) => Some(Message::ArrowUpPress),
+                _ => None,
+            },
+            iced::Event::Keyboard(keyboard::Event::ModifiersChanged(keyboard_modifiers)) => {
+                Some(Message::KeyboardModifiersChange(keyboard_modifiers))
+            }
+            _ => None,
+        })
     }
 
     #[must_use]
@@ -66,8 +84,8 @@ impl TrackList {
                 arrow_press(self, |index, _| index.saturating_sub(1));
                 Event::None
             }
-            Message::ModifiersChange(modifiers) => {
-                self.modifiers = modifiers;
+            Message::KeyboardModifiersChange(keyboard_modifiers) => {
+                self.keyboard_modifiers = keyboard_modifiers;
                 Event::None
             }
             Message::NextPress => {
@@ -92,14 +110,14 @@ impl TrackList {
                 Event::None
             }
             Message::TrackPress(index) => {
-                if self.modifiers.shift() {
+                if self.keyboard_modifiers.shift() {
                     let anchor = self.anchor.unwrap_or(index);
-                    if !self.modifiers.control() {
+                    if !self.keyboard_modifiers.control() {
                         self.selected.clear();
                     }
                     self.shift_arrow_index = Some(index);
                     self.selected.extend(anchor.min(index)..=anchor.max(index));
-                } else if self.modifiers.control() {
+                } else if self.keyboard_modifiers.control() {
                     if !self.selected.remove(&index) {
                         self.selected.insert(index);
                     }
@@ -168,7 +186,7 @@ pub enum Event {
 pub enum Message {
     ArrowDownPress,
     ArrowUpPress,
-    ModifiersChange(Modifiers),
+    KeyboardModifiersChange(keyboard::Modifiers),
     NextPress,
     PreviousPress,
     TrackDoubleClick(usize),
@@ -179,7 +197,7 @@ pub enum Message {
 pub struct TrackList {
     active: Option<usize>,
     anchor: Option<usize>,
-    modifiers: Modifiers,
+    keyboard_modifiers: keyboard::Modifiers,
     selected: HashSet<usize>,
     shift_arrow_index: Option<usize>,
     tracks: Vec<Track>,

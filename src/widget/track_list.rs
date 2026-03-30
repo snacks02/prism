@@ -24,12 +24,12 @@ fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize)
     if track_list.tracks.is_empty() {
         return;
     }
-    let index = match track_list.arrow_shift_index.or(track_list.anchor) {
+    let index = match track_list.shift_arrow_index.or(track_list.anchor) {
         Some(current) => step(current, track_list.tracks.len()),
         None => 0,
     };
     if track_list.modifiers.shift() {
-        track_list.arrow_shift_index = Some(index);
+        track_list.shift_arrow_index = Some(index);
         let anchor = track_list.anchor.unwrap_or(index);
         track_list.selected.clear();
         track_list
@@ -37,9 +37,9 @@ fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize)
             .extend(anchor.min(index)..=anchor.max(index));
     } else {
         track_list.anchor = Some(index);
-        track_list.arrow_shift_index = None;
         track_list.selected.clear();
         track_list.selected.insert(index);
+        track_list.shift_arrow_index = None;
     }
 }
 
@@ -48,9 +48,9 @@ impl TrackList {
         Self {
             active: None,
             anchor: None,
-            arrow_shift_index: None,
             modifiers: Modifiers::default(),
             selected: HashSet::new(),
+            shift_arrow_index: None,
             tracks: vec![],
         }
     }
@@ -70,7 +70,7 @@ impl TrackList {
                 self.modifiers = modifiers;
                 Event::None
             }
-            Message::Next => {
+            Message::NextPress => {
                 if self.tracks.is_empty() {
                     return Event::None;
                 }
@@ -79,37 +79,37 @@ impl TrackList {
                     .map_or(0, |index| (index + 1).min(self.tracks.len() - 1));
                 activate_track(index, self)
             }
-            Message::Previous => {
+            Message::PreviousPress => {
                 if self.tracks.is_empty() {
                     return Event::None;
                 }
                 let index = self.active.map_or(0, |index| index.saturating_sub(1));
                 activate_track(index, self)
             }
-            Message::TrackActivate(index) => activate_track(index, self),
+            Message::TrackDoubleClick(index) => activate_track(index, self),
             Message::TrackListExtend(tracks) => {
                 self.tracks.extend(tracks);
                 Event::None
             }
-            Message::TrackSelect(index) => {
+            Message::TrackPress(index) => {
                 if self.modifiers.shift() {
                     let anchor = self.anchor.unwrap_or(index);
                     if !self.modifiers.control() {
                         self.selected.clear();
                     }
-                    self.arrow_shift_index = Some(index);
+                    self.shift_arrow_index = Some(index);
                     self.selected.extend(anchor.min(index)..=anchor.max(index));
                 } else if self.modifiers.control() {
                     if !self.selected.remove(&index) {
                         self.selected.insert(index);
                     }
                     self.anchor = Some(index);
-                    self.arrow_shift_index = None;
+                    self.shift_arrow_index = None;
                 } else {
+                    self.anchor = Some(index);
                     self.selected.clear();
                     self.selected.insert(index);
-                    self.anchor = Some(index);
-                    self.arrow_shift_index = None;
+                    self.shift_arrow_index = None;
                 }
                 Event::None
             }
@@ -150,8 +150,8 @@ impl TrackList {
                 })
                 .width(Length::Fill),
             )
-            .on_double_click(Message::TrackActivate(index))
-            .on_press(Message::TrackSelect(index))
+            .on_double_click(Message::TrackDoubleClick(index))
+            .on_press(Message::TrackPress(index))
             .into()
         });
 
@@ -169,18 +169,18 @@ pub enum Message {
     ArrowDownPress,
     ArrowUpPress,
     ModifiersChange(Modifiers),
-    Next,
-    Previous,
-    TrackActivate(usize),
+    NextPress,
+    PreviousPress,
+    TrackDoubleClick(usize),
     TrackListExtend(Vec<Track>),
-    TrackSelect(usize),
+    TrackPress(usize),
 }
 
 pub struct TrackList {
     active: Option<usize>,
     anchor: Option<usize>,
-    arrow_shift_index: Option<usize>,
     modifiers: Modifiers,
     selected: HashSet<usize>,
+    shift_arrow_index: Option<usize>,
     tracks: Vec<Track>,
 }

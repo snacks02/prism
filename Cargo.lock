@@ -2667,6 +2667,7 @@ dependencies = [
 name = "prism"
 version = "0.1.0"
 dependencies = [
+ "futures",
  "iced",
  "rfd",
  "rodio",

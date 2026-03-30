@@ -31,21 +31,24 @@ impl Prism {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        iced::event::listen_with(|event, _status, _window| match event {
-            Event::Keyboard(iced::keyboard::Event::KeyPressed { key, .. }) => match key {
-                iced::keyboard::Key::Named(iced::keyboard::key::Named::ArrowDown) => {
-                    Some(Message::TrackList(track_list::Message::ArrowDownPress))
-                }
-                iced::keyboard::Key::Named(iced::keyboard::key::Named::ArrowUp) => {
-                    Some(Message::TrackList(track_list::Message::ArrowUpPress))
-                }
+        Subscription::batch([
+            self.playback.subscription().map(Message::Playback),
+            iced::event::listen_with(|event, _status, _window| match event {
+                Event::Keyboard(iced::keyboard::Event::KeyPressed { key, .. }) => match key {
+                    iced::keyboard::Key::Named(iced::keyboard::key::Named::ArrowDown) => {
+                        Some(Message::TrackList(track_list::Message::ArrowDownPress))
+                    }
+                    iced::keyboard::Key::Named(iced::keyboard::key::Named::ArrowUp) => {
+                        Some(Message::TrackList(track_list::Message::ArrowUpPress))
+                    }
+                    _ => None,
+                },
+                Event::Keyboard(iced::keyboard::Event::ModifiersChanged(modifiers)) => Some(
+                    Message::TrackList(track_list::Message::ModifiersChange(modifiers)),
+                ),
                 _ => None,
-            },
-            Event::Keyboard(iced::keyboard::Event::ModifiersChanged(modifiers)) => Some(
-                Message::TrackList(track_list::Message::ModifiersChange(modifiers)),
-            ),
-            _ => None,
-        })
+            }),
+        ])
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {

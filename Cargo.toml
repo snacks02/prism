@@ -4,6 +4,7 @@ name = "prism"
 version = "0.1.0"
 
 [dependencies]
+futures = "0.3"
 iced = { features = ["smol", "svg"], version = "0.14" }
 rfd = "0.17"
 rodio = "0.22"

@@ -1,4 +1,9 @@
 use crate::track::Track;
+use futures::channel::mpsc::{
+    UnboundedReceiver,
+    UnboundedSender,
+    unbounded,
+};
 use iced::widget::{
     Button,
     button,
@@ -9,7 +14,9 @@ use iced::widget::{
 use iced::{
     ContentFit,
     Element,
+    Subscription,
 };
+use rodio::source::EmptyCallback;
 use rodio::{
     Decoder,
     DeviceSinkBuilder,
@@ -17,6 +24,11 @@ use rodio::{
     Player,
 };
 use std::fs::File;
+use std::hash;
+use std::sync::{
+    Arc,
+    Mutex,
+};
 
 const BUTTON_SIZE: u32 = 32;
 const ICON_NEXT_PATH: &str = "icons/next.svg";
@@ -37,12 +49,29 @@ fn icon_button<'a>(icon: svg::Handle) -> Button<'a, Message> {
     .width(BUTTON_SIZE)
 }
 
+fn on_track_end(data: &TrackEndReceiver) -> UnboundedReceiver<Message> {
+    data.0.lock().unwrap().take().unwrap()
+}
+
+impl hash::Hash for TrackEndReceiver {
+    fn hash<Hasher: hash::Hasher>(&self, state: &mut Hasher) {
+        Arc::as_ptr(&self.0).hash(state);
+    }
+}
+
 impl Playback {
     pub fn new() -> Self {
+        let (sender, receiver) = unbounded::<Message>();
         Self {
             handle: DeviceSinkBuilder::open_default_sink().unwrap(),
             player: None,
+            track_end_receiver: TrackEndReceiver(Arc::new(Mutex::new(Some(receiver)))),
+            track_end_sender: sender,
         }
+    }
+
+    pub fn subscription(&self) -> Subscription<Message> {
+        Subscription::run_with(self.track_end_receiver.clone(), on_track_end)
     }
 
     #[must_use]
@@ -67,7 +96,11 @@ impl Playback {
                     return Event::None;
                 };
                 let player = Player::connect_new(self.handle.mixer());
+                let sender = self.track_end_sender.clone();
                 player.append(decoder);
+                player.append(EmptyCallback::new(Box::new(move || {
+                    let _ = sender.unbounded_send(Message::Next);
+                })));
                 self.player = Some(player);
                 Event::None
             }
@@ -111,4 +144,9 @@ pub enum Message {
 pub struct Playback {
     handle: MixerDeviceSink,
     player: Option<Player>,
+    track_end_receiver: TrackEndReceiver,
+    track_end_sender: UnboundedSender<Message>,
 }
+
+#[derive(Clone, Debug)]
+struct TrackEndReceiver(Arc<Mutex<Option<UnboundedReceiver<Message>>>>);

@@ -1,7 +1,10 @@
 use crate::track::Track;
 use iced::event;
 use iced::keyboard;
-use iced::widget::text::Wrapping;
+use iced::widget::text::{
+    Ellipsis,
+    Wrapping,
+};
 use iced::widget::{
     column,
     container,
@@ -136,9 +139,18 @@ impl TrackList {
 
     pub fn view(&self) -> Element<'_, Message> {
         let header = row![
-            text("Title").width(Length::Fill).wrapping(Wrapping::None),
-            text("Artist").width(Length::Fill).wrapping(Wrapping::None),
-            text("Album").width(Length::Fill).wrapping(Wrapping::None),
+            text("Title")
+                .ellipsis(Ellipsis::End)
+                .width(Length::Fill)
+                .wrapping(Wrapping::None),
+            text("Artist")
+                .ellipsis(Ellipsis::End)
+                .width(Length::Fill)
+                .wrapping(Wrapping::None),
+            text("Album")
+                .ellipsis(Ellipsis::End)
+                .width(Length::Fill)
+                .wrapping(Wrapping::None),
         ];
 
         let rows = self.tracks.iter().enumerate().map(|(index, track)| {
@@ -147,12 +159,15 @@ impl TrackList {
             mouse_area(
                 container(row![
                     text(&track.title)
+                        .ellipsis(Ellipsis::End)
                         .width(Length::Fill)
                         .wrapping(Wrapping::None),
                     text(&track.artist)
+                        .ellipsis(Ellipsis::End)
                         .width(Length::Fill)
                         .wrapping(Wrapping::None),
                     text(&track.album)
+                        .ellipsis(Ellipsis::End)
                         .width(Length::Fill)
                         .wrapping(Wrapping::None),
                 ])

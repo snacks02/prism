@@ -158,9 +158,9 @@ impl TrackList {
                 ])
                 .style(move |theme: &iced::Theme| container::Style {
                     background: if is_active {
-                        Some(theme.extended_palette().primary.strong.color.into())
+                        Some(theme.palette().primary.strong.color.into())
                     } else if is_selected {
-                        Some(theme.extended_palette().primary.weak.color.into())
+                        Some(theme.palette().primary.weak.color.into())
                     } else {
                         None
                     },

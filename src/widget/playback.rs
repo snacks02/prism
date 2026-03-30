@@ -4,6 +4,7 @@ use futures::channel::mpsc::{
     UnboundedSender,
     unbounded,
 };
+use iced::keyboard;
 use iced::widget::{
     Button,
     button,
@@ -15,6 +16,7 @@ use iced::{
     ContentFit,
     Element,
     Subscription,
+    event,
 };
 use rodio::source::EmptyCallback;
 use rodio::{
@@ -71,7 +73,16 @@ impl Playback {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::run_with(self.track_end_receiver.clone(), on_track_end)
+        let keyboard_subscription = event::listen_with(|event, _status, _window| match event {
+            iced::Event::Keyboard(keyboard::Event::KeyPressed {
+                key: keyboard::Key::Named(keyboard::key::Named::Space),
+                ..
+            }) => Some(Message::Pause),
+            _ => None,
+        });
+        let track_end_subscription =
+            Subscription::run_with(self.track_end_receiver.clone(), on_track_end);
+        Subscription::batch([keyboard_subscription, track_end_subscription])
     }
 
     #[must_use]

@@ -1,9 +1,13 @@
 mod track;
 mod widget;
 
-use iced::widget::column;
+use iced::widget::{
+    column,
+    container,
+};
 use iced::{
     Element,
+    Length,
     Subscription,
     Task,
 };
@@ -12,6 +16,9 @@ use widget::{
     toolbar,
     track_list,
 };
+
+const FILL_PORTION_PLAYBACK: u16 = 2;
+const FILL_PORTION_TRACK_LIST: u16 = 5;
 
 fn main() -> iced::Result {
     iced::application(Prism::new, Prism::update, Prism::view)
@@ -69,10 +76,13 @@ impl Prism {
 
     fn view(&self) -> Element<'_, Message> {
         column![
-            self.playback.view().map(Message::Playback),
+            container(self.playback.view().map(Message::Playback))
+                .height(Length::FillPortion(FILL_PORTION_PLAYBACK)),
             self.toolbar.view().map(Message::Toolbar),
-            self.track_list.view().map(Message::TrackList),
+            container(self.track_list.view().map(Message::TrackList))
+                .height(Length::FillPortion(FILL_PORTION_TRACK_LIST)),
         ]
+        .height(Length::Fill)
         .into()
     }
 }

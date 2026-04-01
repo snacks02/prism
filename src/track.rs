@@ -18,6 +18,42 @@ pub fn from_directory(directory: &Path) -> Vec<Track> {
         .collect()
 }
 
+pub fn cover_from_file(path: &Path) -> Option<Vec<u8>> {
+    let file = File::open(path).ok()?;
+    let mut probe_result = symphonia::default::get_probe()
+        .format(
+            &Hint::new(),
+            MediaSourceStream::new(Box::new(file), Default::default()),
+            &FormatOptions::default(),
+            &MetadataOptions::default(),
+        )
+        .ok()?;
+
+    let visual = probe_result
+        .format
+        .metadata()
+        .current()
+        .and_then(|revision| {
+            revision
+                .visuals()
+                .first()
+                .map(|visual| visual.data.to_vec())
+        });
+
+    if visual.is_some() {
+        return visual;
+    }
+
+    probe_result.metadata.get().and_then(|metadata| {
+        metadata.current().and_then(|revision| {
+            revision
+                .visuals()
+                .first()
+                .map(|visual| visual.data.to_vec())
+        })
+    })
+}
+
 pub fn from_file(path: &Path) -> Option<Track> {
     let fallback_title = path
         .file_stem()

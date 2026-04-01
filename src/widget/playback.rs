@@ -1,3 +1,4 @@
+use crate::track;
 use crate::track::Track;
 use futures::channel::mpsc::{
     UnboundedReceiver,
@@ -7,14 +8,20 @@ use futures::channel::mpsc::{
 use iced::keyboard;
 use iced::widget::{
     Button,
+    Space,
     button,
     center,
+    column,
+    container,
+    image,
     row,
     svg,
+    text,
 };
 use iced::{
     ContentFit,
     Element,
+    Length,
     Subscription,
     event,
 };
@@ -27,6 +34,7 @@ use rodio::{
 };
 use std::fs::File;
 use std::hash;
+use std::path::Path;
 use std::sync::{
     Arc,
     Mutex,
@@ -65,8 +73,10 @@ impl Playback {
     pub fn new() -> Self {
         let (sender, receiver) = unbounded::<Message>();
         Self {
+            cover: None,
             handle: DeviceSinkBuilder::open_default_sink().unwrap(),
             player: None,
+            track: None,
             track_end_receiver: TrackEndReceiver(Arc::new(Mutex::new(Some(receiver)))),
             track_end_sender: sender,
         }
@@ -113,6 +123,9 @@ impl Playback {
                     let _ = sender.unbounded_send(Message::Next);
                 })));
                 self.player = Some(player);
+                self.cover = track::cover_from_file(Path::new(&track.file_path))
+                    .map(image::Handle::from_bytes);
+                self.track = Some(track);
                 Event::None
             }
             Message::Previous => Event::Previous,
@@ -124,15 +137,45 @@ impl Playback {
             .player
             .as_ref()
             .is_some_and(|player| !player.is_paused());
-        let icon = if playing {
+        let pause_icon = if playing {
             svg::Handle::from_path(ICON_PAUSE_PATH)
         } else {
             svg::Handle::from_path(ICON_PLAY_PATH)
         };
-        row![
+        let controls = row![
             icon_button(svg::Handle::from_path(ICON_PREVIOUS_PATH)).on_press(Message::Previous),
-            icon_button(icon).on_press(Message::Pause),
+            icon_button(pause_icon).on_press(Message::Pause),
             icon_button(svg::Handle::from_path(ICON_NEXT_PATH)).on_press(Message::Next),
+        ];
+
+        let mut cover_and_information = row![];
+
+        if let Some(cover) = &self.cover {
+            cover_and_information = cover_and_information.push(
+                image(cover.clone())
+                    .content_fit(ContentFit::Contain)
+                    .height(Length::Fill),
+            );
+        }
+        if let Some(track) = &self.track {
+            cover_and_information = cover_and_information.push(
+                column![]
+                    .height(Length::Fill)
+                    .push(Space::new().height(Length::Fill))
+                    .push(text(&track.title))
+                    .push(Space::new().height(Length::Fill))
+                    .push(text(&track.artist))
+                    .push(Space::new().height(Length::Fill))
+                    .push(text(&track.album))
+                    .push(Space::new().height(Length::Fill)),
+            );
+        }
+
+        column![
+            cover_and_information.height(Length::Fill),
+            container(controls)
+                .align_x(iced::Alignment::Center)
+                .width(Length::Fill),
         ]
         .into()
     }
@@ -153,8 +196,10 @@ pub enum Message {
 }
 
 pub struct Playback {
+    cover: Option<image::Handle>,
     handle: MixerDeviceSink,
     player: Option<Player>,
+    track: Option<Track>,
     track_end_receiver: TrackEndReceiver,
     track_end_sender: UnboundedSender<Message>,
 }

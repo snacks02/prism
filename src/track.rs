@@ -85,13 +85,19 @@ pub fn from_file(path: &Path) -> Option<Track> {
 
     let mut album = "Unknown".to_string();
     let mut artist = "Unknown".to_string();
+    let mut replay_gain = 0.0_f32;
     let mut title = fallback_title;
 
     for tag in format_tags.iter().chain(probe_tags.iter()) {
         match tag.std_key {
-            Some(StandardTagKey::TrackTitle) => title = tag.value.to_string(),
             Some(StandardTagKey::Album) => album = tag.value.to_string(),
             Some(StandardTagKey::Artist) => artist = tag.value.to_string(),
+            Some(StandardTagKey::ReplayGainTrackGain) => {
+                if let Ok(value) = tag.value.to_string().trim_end_matches(" dB").parse::<f32>() {
+                    replay_gain = value;
+                }
+            }
+            Some(StandardTagKey::TrackTitle) => title = tag.value.to_string(),
             _ => {}
         }
     }
@@ -100,6 +106,7 @@ pub fn from_file(path: &Path) -> Option<Track> {
         album,
         artist,
         file_path: path.to_string_lossy().into_owned(),
+        replay_gain,
         title,
     })
 }
@@ -109,5 +116,6 @@ pub struct Track {
     pub album: String,
     pub artist: String,
     pub file_path: String,
+    pub replay_gain: f32,
     pub title: String,
 }

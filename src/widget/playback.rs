@@ -25,6 +25,7 @@ use iced::{
     Subscription,
     event,
 };
+use rodio::Source;
 use rodio::source::EmptyCallback;
 use rodio::{
     Decoder,
@@ -118,7 +119,7 @@ impl Playback {
                 };
                 let player = Player::connect_new(self.handle.mixer());
                 let sender = self.track_end_sender.clone();
-                player.append(decoder);
+                player.append(decoder.amplify_decibel(track.replay_gain));
                 player.append(EmptyCallback::new(Box::new(move || {
                     let _ = sender.unbounded_send(Message::Next);
                 })));

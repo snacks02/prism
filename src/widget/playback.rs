@@ -15,6 +15,7 @@ use iced::widget::{
     container,
     image,
     row,
+    slider,
     svg,
     text,
 };
@@ -47,6 +48,10 @@ const ICON_PAUSE_PATH: &str = "icons/pause.svg";
 const ICON_PLAY_PATH: &str = "icons/play.svg";
 const ICON_PREVIOUS_PATH: &str = "icons/previous.svg";
 const ICON_SIZE: u32 = 16;
+const VOLUME_MAXIMUM: f32 = 1.0;
+const VOLUME_MINIMUM: f32 = 0.0;
+const VOLUME_STEP: f32 = 0.01;
+const VOLUME_WIDTH: u32 = 100;
 
 fn icon_button<'a>(icon: svg::Handle) -> Button<'a, Message> {
     button(center(
@@ -80,6 +85,7 @@ impl Playback {
             track: None,
             track_end_receiver: TrackEndReceiver(Arc::new(Mutex::new(Some(receiver)))),
             track_end_sender: sender,
+            volume: VOLUME_MAXIMUM,
         }
     }
 
@@ -118,6 +124,7 @@ impl Playback {
                     return Event::None;
                 };
                 let player = Player::connect_new(self.handle.mixer());
+                player.set_volume(self.volume);
                 let sender = self.track_end_sender.clone();
                 player.append(decoder.amplify_decibel(track.replay_gain));
                 player.append(EmptyCallback::new(Box::new(move || {
@@ -130,6 +137,13 @@ impl Playback {
                 Event::None
             }
             Message::Previous => Event::Previous,
+            Message::VolumeSet(volume) => {
+                self.volume = volume;
+                if let Some(player) = &self.player {
+                    player.set_volume(volume);
+                }
+                Event::None
+            }
         }
     }
 
@@ -147,6 +161,13 @@ impl Playback {
             icon_button(svg::Handle::from_path(ICON_PREVIOUS_PATH)).on_press(Message::Previous),
             icon_button(pause_icon).on_press(Message::Pause),
             icon_button(svg::Handle::from_path(ICON_NEXT_PATH)).on_press(Message::Next),
+            slider(
+                VOLUME_MINIMUM..=VOLUME_MAXIMUM,
+                self.volume,
+                Message::VolumeSet,
+            )
+            .step(VOLUME_STEP)
+            .width(VOLUME_WIDTH),
         ];
 
         let mut cover_and_information = row![];
@@ -194,6 +215,7 @@ pub enum Message {
     Pause,
     Play(Track),
     Previous,
+    VolumeSet(f32),
 }
 
 pub struct Playback {
@@ -203,6 +225,7 @@ pub struct Playback {
     track: Option<Track>,
     track_end_receiver: TrackEndReceiver,
     track_end_sender: UnboundedSender<Message>,
+    volume: f32,
 }
 
 #[derive(Clone, Debug)]

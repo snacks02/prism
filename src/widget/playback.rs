@@ -25,6 +25,7 @@ use iced::{
     Length,
     Subscription,
     event,
+    time,
 };
 use rodio::Source;
 use rodio::source::EmptyCallback;
@@ -41,6 +42,7 @@ use std::sync::{
     Arc,
     Mutex,
 };
+use std::time::Duration;
 
 const BUTTON_SIZE: u32 = 32;
 const ICON_NEXT_PATH: &str = "icons/next.svg";
@@ -48,6 +50,9 @@ const ICON_PAUSE_PATH: &str = "icons/pause.svg";
 const ICON_PLAY_PATH: &str = "icons/play.svg";
 const ICON_PREVIOUS_PATH: &str = "icons/previous.svg";
 const ICON_SIZE: u32 = 16;
+const SEEKBAR_MINIMUM: f32 = 0.0;
+const SEEKBAR_STEP: f32 = 0.001;
+const SEEKBAR_TICK_INTERVAL: Duration = Duration::from_millis(16);
 const VOLUME_MAXIMUM: f32 = 1.0;
 const VOLUME_MINIMUM: f32 = 0.0;
 const VOLUME_STEP: f32 = 0.01;
@@ -82,6 +87,7 @@ impl Playback {
             cover: None,
             handle: DeviceSinkBuilder::open_default_sink().unwrap(),
             player: None,
+            seek_position: None,
             track: None,
             track_end_receiver: TrackEndReceiver(Arc::new(Mutex::new(Some(receiver)))),
             track_end_sender: sender,
@@ -97,9 +103,14 @@ impl Playback {
             }) => Some(Message::Pause),
             _ => None,
         });
+        let seekbar_subscription = time::every(SEEKBAR_TICK_INTERVAL).map(|_| Message::SeekbarTick);
         let track_end_subscription =
             Subscription::run_with(self.track_end_receiver.clone(), on_track_end);
-        Subscription::batch([keyboard_subscription, track_end_subscription])
+        Subscription::batch([
+            keyboard_subscription,
+            seekbar_subscription,
+            track_end_subscription,
+        ])
     }
 
     #[must_use]
@@ -137,6 +148,17 @@ impl Playback {
                 Event::None
             }
             Message::Previous => Event::Previous,
+            Message::SeekbarRelease => {
+                if let (Some(position), Some(player)) = (self.seek_position.take(), &self.player) {
+                    let _ = player.try_seek(Duration::from_secs_f32(position));
+                }
+                Event::None
+            }
+            Message::SeekbarSeek(position) => {
+                self.seek_position = Some(position);
+                Event::None
+            }
+            Message::SeekbarTick => Event::None,
             Message::VolumeSet(volume) => {
                 self.volume = volume;
                 if let Some(player) = &self.player {
@@ -193,10 +215,26 @@ impl Playback {
             );
         }
 
+        let duration = self
+            .track
+            .as_ref()
+            .and_then(|track| track.duration)
+            .unwrap_or(SEEKBAR_MINIMUM);
+        let position = self.seek_position.unwrap_or_else(|| {
+            self.player
+                .as_ref()
+                .map(|player| player.get_pos().as_secs_f32())
+                .unwrap_or(SEEKBAR_MINIMUM)
+        });
+
         column![
             cover_and_information.height(Length::Fill),
             container(controls)
                 .align_x(iced::Alignment::Center)
+                .width(Length::Fill),
+            slider(SEEKBAR_MINIMUM..=duration, position, Message::SeekbarSeek)
+                .on_release(Message::SeekbarRelease)
+                .step(SEEKBAR_STEP)
                 .width(Length::Fill),
         ]
         .into()
@@ -215,6 +253,9 @@ pub enum Message {
     Pause,
     Play(Track),
     Previous,
+    SeekbarRelease,
+    SeekbarSeek(f32),
+    SeekbarTick,
     VolumeSet(f32),
 }
 
@@ -222,6 +263,7 @@ pub struct Playback {
     cover: Option<image::Handle>,
     handle: MixerDeviceSink,
     player: Option<Player>,
+    seek_position: Option<f32>,
     track: Option<Track>,
     track_end_receiver: TrackEndReceiver,
     track_end_sender: UnboundedSender<Message>,

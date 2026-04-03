@@ -102,9 +102,16 @@ pub fn from_file(path: &Path) -> Option<Track> {
         }
     }
 
+    let duration = probe_result.format.default_track().and_then(|track| {
+        let n_frames = track.codec_params.n_frames?;
+        let sample_rate = track.codec_params.sample_rate?;
+        Some(n_frames as f32 / sample_rate as f32)
+    });
+
     Some(Track {
         album,
         artist,
+        duration,
         file_path: path.to_string_lossy().into_owned(),
         replay_gain,
         title,
@@ -115,6 +122,7 @@ pub fn from_file(path: &Path) -> Option<Track> {
 pub struct Track {
     pub album: String,
     pub artist: String,
+    pub duration: Option<f32>,
     pub file_path: String,
     pub replay_gain: f32,
     pub title: String,

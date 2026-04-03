@@ -179,7 +179,7 @@ impl Playback {
         } else {
             svg::Handle::from_path(ICON_PLAY_PATH)
         };
-        let controls = row![
+        let controls = container(row![
             icon_button(svg::Handle::from_path(ICON_PREVIOUS_PATH)).on_press(Message::Previous),
             icon_button(pause_icon).on_press(Message::Pause),
             icon_button(svg::Handle::from_path(ICON_NEXT_PATH)).on_press(Message::Next),
@@ -190,10 +190,11 @@ impl Playback {
             )
             .step(VOLUME_STEP)
             .width(VOLUME_WIDTH),
-        ];
+        ])
+        .align_x(iced::Alignment::Center)
+        .width(Length::Fill);
 
-        let mut cover_and_information = row![];
-
+        let mut cover_and_information = row![].height(Length::Fill);
         if let Some(cover) = &self.cover {
             cover_and_information = cover_and_information.push(
                 image(cover.clone())
@@ -226,18 +227,12 @@ impl Playback {
                 .map(|player| player.get_pos().as_secs_f32())
                 .unwrap_or(SEEKBAR_MINIMUM)
         });
+        let seekbar = slider(SEEKBAR_MINIMUM..=duration, position, Message::SeekbarSeek)
+            .on_release(Message::SeekbarRelease)
+            .step(SEEKBAR_STEP)
+            .width(Length::Fill);
 
-        column![
-            cover_and_information.height(Length::Fill),
-            container(controls)
-                .align_x(iced::Alignment::Center)
-                .width(Length::Fill),
-            slider(SEEKBAR_MINIMUM..=duration, position, Message::SeekbarSeek)
-                .on_release(Message::SeekbarRelease)
-                .step(SEEKBAR_STEP)
-                .width(Length::Fill),
-        ]
-        .into()
+        column![cover_and_information, controls, seekbar].into()
     }
 }
 

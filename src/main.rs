@@ -1,4 +1,5 @@
 mod track;
+mod trigram;
 mod widget;
 
 use iced::widget::{
@@ -55,6 +56,12 @@ impl Prism {
             Message::Toolbar(message) => match self.toolbar.update(message) {
                 toolbar::Event::None => Task::none(),
                 toolbar::Event::Performed(task) => task.map(Message::Toolbar),
+                toolbar::Event::SearchInputed(search_query) => {
+                    let _ = self
+                        .track_list
+                        .update(track_list::Message::SearchInput(search_query));
+                    Task::none()
+                }
                 toolbar::Event::TrackListExtended(tracks) => {
                     let _ = self
                         .track_list

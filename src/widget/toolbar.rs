@@ -15,7 +15,6 @@ use iced::{
     ContentFit,
     Element,
     Length,
-    Never,
     Task,
 };
 use std::path::PathBuf;
@@ -41,9 +40,11 @@ fn icon_button<'a>(icon: svg::Handle) -> Button<'a, Message> {
     .width(BUTTON_SIZE)
 }
 
-fn search_field<'a>() -> Element<'a, Never> {
+fn search_field<'a>(value: &str) -> Element<'a, Message> {
     stack![
-        text_input("Search", "blep").width(Length::Fill),
+        text_input("Search", value)
+            .on_input(Message::SearchInput)
+            .width(Length::Fill),
         container(
             svg(svg::Handle::from_path(ICON_SEARCH_PATH))
                 .height(ICON_SIZE)
@@ -57,7 +58,9 @@ fn search_field<'a>() -> Element<'a, Never> {
 
 impl Toolbar {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            search_query: String::new(),
+        }
     }
 
     #[must_use]
@@ -92,13 +95,17 @@ impl Toolbar {
                 },
                 Message::TrackListExtend,
             )),
+            Message::SearchInput(search_query) => {
+                self.search_query = search_query.clone();
+                Event::SearchInputed(search_query)
+            }
             Message::TrackListExtend(tracks) => Event::TrackListExtended(tracks),
         }
     }
 
     pub fn view(&self) -> Element<'_, Message> {
         row![
-            search_field().map(|never| match never {}),
+            search_field(&self.search_query),
             icon_button(svg::Handle::from_path(ICON_FILE_PATH)).on_press(Message::FileOpen),
             icon_button(svg::Handle::from_path(ICON_FOLDER_PATH)).on_press(Message::FolderOpen),
         ]
@@ -112,6 +119,7 @@ impl Toolbar {
 pub enum Event {
     None,
     Performed(Task<Message>),
+    SearchInputed(String),
     TrackListExtended(Vec<Track>),
 }
 
@@ -120,7 +128,10 @@ pub enum Message {
     FileOpen,
     FolderOpen,
     PathPick(Option<PathBuf>),
+    SearchInput(String),
     TrackListExtend(Vec<Track>),
 }
 
-pub struct Toolbar {}
+pub struct Toolbar {
+    search_query: String,
+}

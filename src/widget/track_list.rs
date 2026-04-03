@@ -1,4 +1,5 @@
 use crate::track::Track;
+use crate::trigram;
 use iced::event;
 use iced::keyboard;
 use iced::widget::text::{
@@ -19,6 +20,8 @@ use iced::{
     Subscription,
 };
 use std::collections::HashSet;
+
+const SEARCH_THRESHOLD: f32 = 0.1;
 
 fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize) {
     if track_list.tracks.is_empty() {
@@ -79,6 +82,7 @@ impl TrackList {
             active: None,
             anchor: None,
             keyboard_modifiers: keyboard::Modifiers::default(),
+            search_query: String::new(),
             selected: HashSet::new(),
             shift_arrow_index: None,
             tracks: vec![],
@@ -142,6 +146,10 @@ impl TrackList {
                 self.tracks.extend(tracks);
                 Event::None
             }
+            Message::SearchInput(search_query) => {
+                self.search_query = search_query;
+                Event::None
+            }
             Message::TrackPress(index) => {
                 track_select(index, self);
                 Event::None
@@ -165,40 +173,48 @@ impl TrackList {
                 .wrapping(Wrapping::None),
         ];
 
-        let rows = self.tracks.iter().enumerate().map(|(index, track)| {
-            let is_active = self.active == Some(index);
-            let is_selected = self.selected.contains(&index);
-            mouse_area(
-                container(row![
-                    text(&track.title)
-                        .ellipsis(Ellipsis::End)
-                        .width(Length::Fill)
-                        .wrapping(Wrapping::None),
-                    text(&track.artist)
-                        .ellipsis(Ellipsis::End)
-                        .width(Length::Fill)
-                        .wrapping(Wrapping::None),
-                    text(&track.album)
-                        .ellipsis(Ellipsis::End)
-                        .width(Length::Fill)
-                        .wrapping(Wrapping::None),
-                ])
-                .style(move |theme: &iced::Theme| container::Style {
-                    background: if is_active {
-                        Some(theme.palette().primary.strong.color.into())
-                    } else if is_selected {
-                        Some(theme.palette().primary.weak.color.into())
-                    } else {
-                        None
-                    },
-                    ..container::Style::default()
-                })
-                .width(Length::Fill),
-            )
-            .on_double_click(Message::TrackDoubleClick(index))
-            .on_press(Message::TrackPress(index))
-            .into()
-        });
+        let fields: Vec<String> = self
+            .tracks
+            .iter()
+            .map(|track| format!("{} {} {}", track.album, track.artist, track.title))
+            .collect();
+        let rows = trigram::top_indexes(&self.search_query, &fields, SEARCH_THRESHOLD)
+            .into_iter()
+            .map(|index| {
+                let track = &self.tracks[index];
+                let is_active = self.active == Some(index);
+                let is_selected = self.selected.contains(&index);
+                mouse_area(
+                    container(row![
+                        text(&track.title)
+                            .ellipsis(Ellipsis::End)
+                            .width(Length::Fill)
+                            .wrapping(Wrapping::None),
+                        text(&track.artist)
+                            .ellipsis(Ellipsis::End)
+                            .width(Length::Fill)
+                            .wrapping(Wrapping::None),
+                        text(&track.album)
+                            .ellipsis(Ellipsis::End)
+                            .width(Length::Fill)
+                            .wrapping(Wrapping::None),
+                    ])
+                    .style(move |theme: &iced::Theme| container::Style {
+                        background: if is_active {
+                            Some(theme.palette().primary.strong.color.into())
+                        } else if is_selected {
+                            Some(theme.palette().primary.weak.color.into())
+                        } else {
+                            None
+                        },
+                        ..container::Style::default()
+                    })
+                    .width(Length::Fill),
+                )
+                .on_double_click(Message::TrackDoubleClick(index))
+                .on_press(Message::TrackPress(index))
+                .into()
+            });
 
         scrollable(column![header].extend(rows)).into()
     }
@@ -217,6 +233,7 @@ pub enum Message {
     KeyboardModifiersChange(keyboard::Modifiers),
     Next,
     Previous,
+    SearchInput(String),
     TrackDoubleClick(usize),
     TrackListExtend(Vec<Track>),
     TrackPress(usize),
@@ -226,6 +243,7 @@ pub struct TrackList {
     active: Option<usize>,
     anchor: Option<usize>,
     keyboard_modifiers: keyboard::Modifiers,
+    search_query: String,
     selected: HashSet<usize>,
     shift_arrow_index: Option<usize>,
     tracks: Vec<Track>,

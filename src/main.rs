@@ -46,12 +46,10 @@ impl Prism {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Playback(message) => match self.playback.update(message) {
-                playback::Event::Next => {
-                    self.update(Message::TrackList(track_list::Message::NextPress))
-                }
+                playback::Event::Next => self.update(Message::TrackList(track_list::Message::Next)),
                 playback::Event::None => Task::none(),
                 playback::Event::Previous => {
-                    self.update(Message::TrackList(track_list::Message::PreviousPress))
+                    self.update(Message::TrackList(track_list::Message::Previous))
                 }
             },
             Message::Toolbar(message) => match self.toolbar.update(message) {

@@ -121,7 +121,7 @@ impl TrackList {
                 self.keyboard_modifiers = keyboard_modifiers;
                 Event::None
             }
-            Message::NextPress => {
+            Message::Next => {
                 if self.tracks.is_empty() {
                     return Event::None;
                 }
@@ -130,7 +130,7 @@ impl TrackList {
                     .map_or(0, |index| (index + 1).min(self.tracks.len() - 1));
                 track_activate(index, self)
             }
-            Message::PreviousPress => {
+            Message::Previous => {
                 if self.tracks.is_empty() {
                     return Event::None;
                 }
@@ -215,8 +215,8 @@ pub enum Message {
     ArrowUpPress,
     EnterPress,
     KeyboardModifiersChange(keyboard::Modifiers),
-    NextPress,
-    PreviousPress,
+    Next,
+    Previous,
     TrackDoubleClick(usize),
     TrackListExtend(Vec<Track>),
     TrackPress(usize),

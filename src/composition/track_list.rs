@@ -236,7 +236,16 @@ impl TrackList {
             }
             Message::TrackDoubleClick(index) => track_activate(index, self),
             Message::TrackListExtend(tracks) => {
-                self.tracks.extend(tracks);
+                let opened_file_paths: HashSet<String> = self
+                    .tracks
+                    .iter()
+                    .map(|track| track.file_path.clone())
+                    .collect();
+                self.tracks.extend(
+                    tracks
+                        .into_iter()
+                        .filter(|track| !opened_file_paths.contains(&track.file_path)),
+                );
                 Event::None
             }
             Message::TrackPress(index) => {

@@ -1,8 +1,7 @@
 use {
     crate::{
         icons,
-        track,
-        track::Track,
+        track_import,
         trigram,
     },
     iced::{
@@ -208,9 +207,9 @@ impl TrackList {
             Message::PathPick(Some(path)) => Event::TaskPerform(Task::perform(
                 async move {
                     if path.is_dir() {
-                        track::from_directory(&path)
+                        track_import::from_directory(&path)
                     } else {
-                        track::from_file(&path).into_iter().collect()
+                        track_import::from_file(&path).into_iter().collect()
                     }
                 },
                 Message::TrackListExtend,
@@ -345,6 +344,16 @@ pub enum Message {
     TrackDoubleClick(usize),
     TrackListExtend(Vec<Track>),
     TrackPress(usize),
+}
+
+#[derive(Clone, Debug)]
+pub struct Track {
+    pub album: String,
+    pub artist: String,
+    pub duration: Option<f32>,
+    pub file_path: String,
+    pub replay_gain: f32,
+    pub title: String,
 }
 
 pub struct TrackList {

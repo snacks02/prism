@@ -1,4 +1,5 @@
 use {
+    crate::composition::track_list::Track,
     std::{
         fs::File,
         path::Path,
@@ -125,14 +126,4 @@ pub fn from_file(path: &Path) -> Option<Track> {
         replay_gain,
         title,
     })
-}
-
-#[derive(Clone, Debug)]
-pub struct Track {
-    pub album: String,
-    pub artist: String,
-    pub duration: Option<f32>,
-    pub file_path: String,
-    pub replay_gain: f32,
-    pub title: String,
 }

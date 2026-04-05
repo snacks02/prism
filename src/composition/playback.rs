@@ -1,8 +1,8 @@
 use {
     crate::{
+        composition::track_list::Track,
         icons,
-        track,
-        track::Track,
+        track_import,
     },
     futures::channel::mpsc::{
         UnboundedReceiver,
@@ -172,7 +172,7 @@ impl Playback {
                     let _ = sender.unbounded_send(Message::ButtonNextPress);
                 })));
                 self.player = Some(player);
-                self.cover = track::cover_from_file(Path::new(&track.file_path))
+                self.cover = track_import::cover_from_file(Path::new(&track.file_path))
                     .map(image::Handle::from_bytes);
                 self.track = Some(track);
                 Event::None

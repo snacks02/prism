@@ -110,10 +110,11 @@ impl Playback {
             Keyboard(KeyPressed {
                 key: Key::Named(Named::Space),
                 ..
-            }) if status == Status::Ignored => Some(Message::Pause),
+            }) if status == Status::Ignored => Some(Message::ButtonPauseOrPlayPress),
             _ => None,
         });
-        let seekbar_subscription = time::every(SEEKBAR_TICK_INTERVAL).map(|_| Message::SeekbarTick);
+        let seekbar_subscription =
+            time::every(SEEKBAR_TICK_INTERVAL).map(|_| Message::SliderSeekbarTick);
         let track_end_subscription =
             Subscription::run_with(self.track_end_receiver.clone(), on_track_end);
         Subscription::batch([
@@ -126,8 +127,8 @@ impl Playback {
     #[must_use]
     pub fn update(&mut self, message: Message) -> Event {
         match message {
-            Message::Next => Event::Next,
-            Message::Pause => {
+            Message::ButtonNextPress => Event::Next,
+            Message::ButtonPauseOrPlayPress => {
                 if let Some(player) = &self.player {
                     if player.is_paused() {
                         player.play();
@@ -137,7 +138,26 @@ impl Playback {
                 }
                 Event::None
             }
-            Message::Play(track) => {
+            Message::ButtonPreviousPress => Event::Previous,
+            Message::SliderSeekbarMouseDrag(position) => {
+                self.seek_position = Some(position);
+                Event::None
+            }
+            Message::SliderSeekbarMouseRelease => {
+                if let (Some(position), Some(player)) = (self.seek_position.take(), &self.player) {
+                    let _ = player.try_seek(Duration::from_secs_f32(position));
+                }
+                Event::None
+            }
+            Message::SliderSeekbarTick => Event::None,
+            Message::SliderVolumeChange(volume) => {
+                self.volume = volume;
+                if let Some(player) = &self.player {
+                    player.set_volume(volume);
+                }
+                Event::None
+            }
+            Message::TrackPlay(track) => {
                 let Ok(file) = File::open(&track.file_path) else {
                     return Event::None;
                 };
@@ -149,31 +169,12 @@ impl Playback {
                 let sender = self.track_end_sender.clone();
                 player.append(decoder.amplify_decibel(track.replay_gain));
                 player.append(EmptyCallback::new(Box::new(move || {
-                    let _ = sender.unbounded_send(Message::Next);
+                    let _ = sender.unbounded_send(Message::ButtonNextPress);
                 })));
                 self.player = Some(player);
                 self.cover = track::cover_from_file(Path::new(&track.file_path))
                     .map(image::Handle::from_bytes);
                 self.track = Some(track);
-                Event::None
-            }
-            Message::Previous => Event::Previous,
-            Message::SeekbarRelease => {
-                if let (Some(position), Some(player)) = (self.seek_position.take(), &self.player) {
-                    let _ = player.try_seek(Duration::from_secs_f32(position));
-                }
-                Event::None
-            }
-            Message::SeekbarSeek(position) => {
-                self.seek_position = Some(position);
-                Event::None
-            }
-            Message::SeekbarTick => Event::None,
-            Message::VolumeSet(volume) => {
-                self.volume = volume;
-                if let Some(player) = &self.player {
-                    player.set_volume(volume);
-                }
                 Event::None
             }
         }
@@ -186,13 +187,14 @@ impl Playback {
             .is_some_and(|player| !player.is_paused());
         let pause_icon = svg::Handle::from_memory(if playing { icons::PAUSE } else { icons::PLAY });
         let controls = container(row![
-            icon_button(svg::Handle::from_memory(icons::PREVIOUS)).on_press(Message::Previous),
-            icon_button(pause_icon).on_press(Message::Pause),
-            icon_button(svg::Handle::from_memory(icons::NEXT)).on_press(Message::Next),
+            icon_button(svg::Handle::from_memory(icons::PREVIOUS))
+                .on_press(Message::ButtonPreviousPress),
+            icon_button(pause_icon).on_press(Message::ButtonPauseOrPlayPress),
+            icon_button(svg::Handle::from_memory(icons::NEXT)).on_press(Message::ButtonNextPress),
             slider(
                 VOLUME_MINIMUM..=VOLUME_MAXIMUM,
                 self.volume,
-                Message::VolumeSet,
+                Message::SliderVolumeChange,
             )
             .step(VOLUME_STEP)
             .width(VOLUME_WIDTH),
@@ -233,10 +235,14 @@ impl Playback {
                 .map(|player| player.get_pos().as_secs_f32())
                 .unwrap_or(SEEKBAR_MINIMUM)
         });
-        let seekbar = slider(SEEKBAR_MINIMUM..=duration, position, Message::SeekbarSeek)
-            .on_release(Message::SeekbarRelease)
-            .step(SEEKBAR_STEP)
-            .width(Length::Fill);
+        let seekbar = slider(
+            SEEKBAR_MINIMUM..=duration,
+            position,
+            Message::SliderSeekbarMouseDrag,
+        )
+        .on_release(Message::SliderSeekbarMouseRelease)
+        .step(SEEKBAR_STEP)
+        .width(Length::Fill);
 
         column![cover_and_information, controls, seekbar].into()
     }
@@ -250,14 +256,14 @@ pub enum Event {
 
 #[derive(Clone, Debug)]
 pub enum Message {
-    Next,
-    Pause,
-    Play(Track),
-    Previous,
-    SeekbarRelease,
-    SeekbarSeek(f32),
-    SeekbarTick,
-    VolumeSet(f32),
+    ButtonNextPress,
+    ButtonPauseOrPlayPress,
+    ButtonPreviousPress,
+    SliderSeekbarMouseDrag(f32),
+    SliderSeekbarMouseRelease,
+    SliderSeekbarTick,
+    SliderVolumeChange(f32),
+    TrackPlay(Track),
 }
 
 pub struct Playback {

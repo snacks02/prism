@@ -88,7 +88,7 @@ fn icon_button<'a>(icon: svg::Handle) -> Button<'a, Message> {
 fn search_text_input<'a>(value: &str) -> Element<'a, Message> {
     stack![
         text_input("Search", value)
-            .on_input(Message::SearchInput)
+            .on_input(Message::SearchTextInput)
             .width(Length::Fill),
         container(
             svg(svg::Handle::from_memory(icons::SEARCH))
@@ -155,9 +155,9 @@ impl TrackList {
     pub fn subscription(&self) -> Subscription<Message> {
         event::listen_with(|event, _status, _window| match event {
             Keyboard(KeyPressed { key, .. }) => match key {
-                Key::Named(Named::ArrowDown) => Some(Message::ArrowDownPress),
-                Key::Named(Named::ArrowUp) => Some(Message::ArrowUpPress),
-                Key::Named(Named::Enter) => Some(Message::EnterPress),
+                Key::Named(Named::ArrowDown) => Some(Message::KeyboardKeyArrowDownPress),
+                Key::Named(Named::ArrowUp) => Some(Message::KeyboardKeyArrowUpPress),
+                Key::Named(Named::Enter) => Some(Message::KeyboardKeyEnterPress),
                 _ => None,
             },
             Keyboard(ModifiersChanged(keyboard_modifiers)) => {
@@ -170,19 +170,7 @@ impl TrackList {
     #[must_use]
     pub fn update(&mut self, message: Message) -> Event {
         match message {
-            Message::ArrowDownPress => {
-                arrow_press(self, |index, length| (index + 1).min(length - 1));
-                Event::None
-            }
-            Message::ArrowUpPress => {
-                arrow_press(self, |index, _| index.saturating_sub(1));
-                Event::None
-            }
-            Message::EnterPress => match self.anchor {
-                Some(index) => track_activate(index, self),
-                None => Event::None,
-            },
-            Message::FileOpen => Event::Performed(Task::perform(
+            Message::ButtonFileOpenPress => Event::Performed(Task::perform(
                 async {
                     AsyncFileDialog::new()
                         .pick_file()
@@ -191,7 +179,7 @@ impl TrackList {
                 },
                 Message::PathPick,
             )),
-            Message::FolderOpen => Event::Performed(Task::perform(
+            Message::ButtonFolderOpenPress => Event::Performed(Task::perform(
                 async {
                     AsyncFileDialog::new()
                         .pick_folder()
@@ -200,18 +188,21 @@ impl TrackList {
                 },
                 Message::PathPick,
             )),
+            Message::KeyboardKeyArrowDownPress => {
+                arrow_press(self, |index, length| (index + 1).min(length - 1));
+                Event::None
+            }
+            Message::KeyboardKeyArrowUpPress => {
+                arrow_press(self, |index, _| index.saturating_sub(1));
+                Event::None
+            }
+            Message::KeyboardKeyEnterPress => match self.anchor {
+                Some(index) => track_activate(index, self),
+                None => Event::None,
+            },
             Message::KeyboardModifiersChange(keyboard_modifiers) => {
                 self.keyboard_modifiers = keyboard_modifiers;
                 Event::None
-            }
-            Message::Next => {
-                if self.tracks.is_empty() {
-                    return Event::None;
-                }
-                let index = self
-                    .active
-                    .map_or(0, |index| (index + 1).min(self.tracks.len() - 1));
-                track_activate(index, self)
             }
             Message::PathPick(None) => Event::None,
             Message::PathPick(Some(path)) => Event::Performed(Task::perform(
@@ -224,16 +215,25 @@ impl TrackList {
                 },
                 Message::TrackListExtend,
             )),
-            Message::Previous => {
+            Message::SearchTextInput(search_query) => {
+                self.search_query = search_query;
+                Event::None
+            }
+            Message::TrackActivateNext => {
+                if self.tracks.is_empty() {
+                    return Event::None;
+                }
+                let index = self
+                    .active
+                    .map_or(0, |index| (index + 1).min(self.tracks.len() - 1));
+                track_activate(index, self)
+            }
+            Message::TrackActivatePrevious => {
                 if self.tracks.is_empty() {
                     return Event::None;
                 }
                 let index = self.active.map_or(0, |index| index.saturating_sub(1));
                 track_activate(index, self)
-            }
-            Message::SearchInput(search_query) => {
-                self.search_query = search_query;
-                Event::None
             }
             Message::TrackDoubleClick(index) => track_activate(index, self),
             Message::TrackListExtend(tracks) => {
@@ -250,8 +250,10 @@ impl TrackList {
     pub fn view(&self) -> Element<'_, Message> {
         let toolbar = row![
             search_text_input(&self.search_query),
-            icon_button(svg::Handle::from_memory(icons::FILE)).on_press(Message::FileOpen),
-            icon_button(svg::Handle::from_memory(icons::FOLDER)).on_press(Message::FolderOpen),
+            icon_button(svg::Handle::from_memory(icons::FILE))
+                .on_press(Message::ButtonFileOpenPress),
+            icon_button(svg::Handle::from_memory(icons::FOLDER))
+                .on_press(Message::ButtonFolderOpenPress),
         ]
         .height(HEIGHT)
         .padding(PADDING)
@@ -330,16 +332,16 @@ pub enum Event {
 
 #[derive(Clone, Debug)]
 pub enum Message {
-    ArrowDownPress,
-    ArrowUpPress,
-    EnterPress,
-    FileOpen,
-    FolderOpen,
+    ButtonFileOpenPress,
+    ButtonFolderOpenPress,
+    KeyboardKeyArrowDownPress,
+    KeyboardKeyArrowUpPress,
+    KeyboardKeyEnterPress,
     KeyboardModifiersChange(Modifiers),
-    Next,
     PathPick(Option<PathBuf>),
-    Previous,
-    SearchInput(String),
+    SearchTextInput(String),
+    TrackActivateNext,
+    TrackActivatePrevious,
     TrackDoubleClick(usize),
     TrackListExtend(Vec<Track>),
     TrackPress(usize),

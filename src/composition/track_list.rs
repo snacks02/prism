@@ -1,25 +1,40 @@
-use crate::track::Track;
-use crate::trigram;
-use iced::event;
-use iced::keyboard;
-use iced::widget::text::{
-    Ellipsis,
-    Wrapping,
+use {
+    crate::{
+        track::Track,
+        trigram,
+    },
+    iced::{
+        Element,
+        Event::Keyboard,
+        Length,
+        Subscription,
+        Theme,
+        event,
+        keyboard::{
+            Event::{
+                KeyPressed,
+                ModifiersChanged,
+            },
+            Key,
+            Modifiers,
+            key::Named,
+        },
+        widget::{
+            column,
+            container,
+            container::Style,
+            mouse_area,
+            row,
+            scrollable,
+            text,
+            text::{
+                Ellipsis,
+                Wrapping,
+            },
+        },
+    },
+    std::collections::HashSet,
 };
-use iced::widget::{
-    column,
-    container,
-    mouse_area,
-    row,
-    scrollable,
-    text,
-};
-use iced::{
-    Element,
-    Length,
-    Subscription,
-};
-use std::collections::HashSet;
 
 const SEARCH_THRESHOLD: f32 = 0.1;
 
@@ -81,7 +96,7 @@ impl TrackList {
         Self {
             active: None,
             anchor: None,
-            keyboard_modifiers: keyboard::Modifiers::default(),
+            keyboard_modifiers: Modifiers::default(),
             search_query: String::new(),
             selected: HashSet::new(),
             shift_arrow_index: None,
@@ -91,15 +106,13 @@ impl TrackList {
 
     pub fn subscription(&self) -> Subscription<Message> {
         event::listen_with(|event, _status, _window| match event {
-            iced::Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) => match key {
-                keyboard::Key::Named(keyboard::key::Named::ArrowDown) => {
-                    Some(Message::ArrowDownPress)
-                }
-                keyboard::Key::Named(keyboard::key::Named::ArrowUp) => Some(Message::ArrowUpPress),
-                keyboard::Key::Named(keyboard::key::Named::Enter) => Some(Message::EnterPress),
+            Keyboard(KeyPressed { key, .. }) => match key {
+                Key::Named(Named::ArrowDown) => Some(Message::ArrowDownPress),
+                Key::Named(Named::ArrowUp) => Some(Message::ArrowUpPress),
+                Key::Named(Named::Enter) => Some(Message::EnterPress),
                 _ => None,
             },
-            iced::Event::Keyboard(keyboard::Event::ModifiersChanged(keyboard_modifiers)) => {
+            Keyboard(ModifiersChanged(keyboard_modifiers)) => {
                 Some(Message::KeyboardModifiersChange(keyboard_modifiers))
             }
             _ => None,
@@ -199,7 +212,7 @@ impl TrackList {
                             .width(Length::Fill)
                             .wrapping(Wrapping::None),
                     ])
-                    .style(move |theme: &iced::Theme| container::Style {
+                    .style(move |theme: &Theme| Style {
                         background: if is_active {
                             Some(theme.palette().primary.strong.color.into())
                         } else if is_selected {
@@ -207,7 +220,7 @@ impl TrackList {
                         } else {
                             None
                         },
-                        ..container::Style::default()
+                        ..Style::default()
                     })
                     .width(Length::Fill),
                 )
@@ -230,7 +243,7 @@ pub enum Message {
     ArrowDownPress,
     ArrowUpPress,
     EnterPress,
-    KeyboardModifiersChange(keyboard::Modifiers),
+    KeyboardModifiersChange(Modifiers),
     Next,
     Previous,
     SearchInput(String),
@@ -242,7 +255,7 @@ pub enum Message {
 pub struct TrackList {
     active: Option<usize>,
     anchor: Option<usize>,
-    keyboard_modifiers: keyboard::Modifiers,
+    keyboard_modifiers: Modifiers,
     search_query: String,
     selected: HashSet<usize>,
     shift_arrow_index: Option<usize>,

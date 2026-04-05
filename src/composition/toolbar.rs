@@ -1,23 +1,28 @@
-use crate::track;
-use crate::track::Track;
-use iced::widget::{
-    Button,
-    button,
-    center,
-    container,
-    row,
-    stack,
-    svg,
-    text_input,
+use {
+    crate::{
+        track,
+        track::Track,
+    },
+    iced::{
+        Alignment,
+        ContentFit,
+        Element,
+        Length,
+        Task,
+        widget::{
+            Button,
+            button,
+            center,
+            container,
+            row,
+            stack,
+            svg,
+            text_input,
+        },
+    },
+    rfd::AsyncFileDialog,
+    std::path::PathBuf,
 };
-use iced::{
-    Alignment,
-    ContentFit,
-    Element,
-    Length,
-    Task,
-};
-use std::path::PathBuf;
 
 const BUTTON_SIZE: u32 = 32;
 const HEIGHT: u32 = 48;
@@ -68,7 +73,7 @@ impl Toolbar {
         match message {
             Message::FileOpen => Event::Performed(Task::perform(
                 async {
-                    rfd::AsyncFileDialog::new()
+                    AsyncFileDialog::new()
                         .pick_file()
                         .await
                         .map(|handle| handle.path().to_owned())
@@ -77,7 +82,7 @@ impl Toolbar {
             )),
             Message::FolderOpen => Event::Performed(Task::perform(
                 async {
-                    rfd::AsyncFileDialog::new()
+                    AsyncFileDialog::new()
                         .pick_folder()
                         .await
                         .map(|handle| handle.path().to_owned())

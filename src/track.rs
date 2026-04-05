@@ -1,13 +1,22 @@
-use std::fs::File;
-use std::path::Path;
-use symphonia::core::formats::FormatOptions;
-use symphonia::core::io::MediaSourceStream;
-use symphonia::core::meta::{
-    MetadataOptions,
-    StandardTagKey,
+use {
+    std::{
+        fs::File,
+        path::Path,
+    },
+    symphonia::{
+        core::{
+            formats::FormatOptions,
+            io::MediaSourceStream,
+            meta::{
+                MetadataOptions,
+                StandardTagKey,
+            },
+            probe::Hint,
+        },
+        default,
+    },
+    walkdir::WalkDir,
 };
-use symphonia::core::probe::Hint;
-use walkdir::WalkDir;
 
 pub fn from_directory(directory: &Path) -> Vec<Track> {
     WalkDir::new(directory)
@@ -20,7 +29,7 @@ pub fn from_directory(directory: &Path) -> Vec<Track> {
 
 pub fn cover_from_file(path: &Path) -> Option<Vec<u8>> {
     let file = File::open(path).ok()?;
-    let mut probe_result = symphonia::default::get_probe()
+    let mut probe_result = default::get_probe()
         .format(
             &Hint::new(),
             MediaSourceStream::new(Box::new(file), Default::default()),
@@ -62,7 +71,7 @@ pub fn from_file(path: &Path) -> Option<Track> {
         .to_string();
     let file = File::open(path).ok()?;
 
-    let mut probe_result = symphonia::default::get_probe()
+    let mut probe_result = default::get_probe()
         .format(
             &Hint::new(),
             MediaSourceStream::new(Box::new(file), Default::default()),

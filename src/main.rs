@@ -2,26 +2,29 @@ mod composition;
 mod track;
 mod trigram;
 
-use composition::{
-    playback,
-    toolbar,
-    track_list,
-};
-use iced::widget::{
-    column,
-    container,
-};
-use iced::{
-    Element,
-    Length,
-    Subscription,
-    Task,
+use {
+    composition::{
+        playback,
+        toolbar,
+        track_list,
+    },
+    iced::{
+        Element,
+        Length,
+        Result,
+        Subscription,
+        Task,
+        widget::{
+            column,
+            container,
+        },
+    },
 };
 
 const FILL_PORTION_PLAYBACK: u16 = 2;
 const FILL_PORTION_TRACK_LIST: u16 = 5;
 
-fn main() -> iced::Result {
+fn main() -> Result {
     iced::application(Prism::new, Prism::update, Prism::view)
         .subscription(Prism::subscription)
         .title("Prism")

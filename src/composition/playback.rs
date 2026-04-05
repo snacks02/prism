@@ -1,48 +1,61 @@
-use crate::track;
-use crate::track::Track;
-use futures::channel::mpsc::{
-    UnboundedReceiver,
-    UnboundedSender,
-    unbounded,
+use {
+    crate::{
+        track,
+        track::Track,
+    },
+    futures::channel::mpsc::{
+        UnboundedReceiver,
+        UnboundedSender,
+        unbounded,
+    },
+    iced::{
+        Alignment,
+        ContentFit,
+        Element,
+        Event::Keyboard,
+        Length,
+        Subscription,
+        event,
+        event::Status,
+        keyboard::{
+            Event::KeyPressed,
+            Key,
+            key::Named,
+        },
+        time,
+        widget::{
+            Button,
+            Space,
+            button,
+            center,
+            column,
+            container,
+            image,
+            row,
+            slider,
+            svg,
+            text,
+        },
+    },
+    rodio::{
+        Decoder,
+        DeviceSinkBuilder,
+        MixerDeviceSink,
+        Player,
+        Source,
+        source::EmptyCallback,
+    },
+    std::{
+        fs::File,
+        hash,
+        path::Path,
+        sync::{
+            Arc,
+            Mutex,
+        },
+        time::Duration,
+    },
 };
-use iced::keyboard;
-use iced::widget::{
-    Button,
-    Space,
-    button,
-    center,
-    column,
-    container,
-    image,
-    row,
-    slider,
-    svg,
-    text,
-};
-use iced::{
-    ContentFit,
-    Element,
-    Length,
-    Subscription,
-    event,
-    time,
-};
-use rodio::Source;
-use rodio::source::EmptyCallback;
-use rodio::{
-    Decoder,
-    DeviceSinkBuilder,
-    MixerDeviceSink,
-    Player,
-};
-use std::fs::File;
-use std::hash;
-use std::path::Path;
-use std::sync::{
-    Arc,
-    Mutex,
-};
-use std::time::Duration;
 
 const BUTTON_SIZE: u32 = 32;
 const ICON_NEXT_PATH: &str = "icons/next.svg";
@@ -97,10 +110,10 @@ impl Playback {
 
     pub fn subscription(&self) -> Subscription<Message> {
         let keyboard_subscription = event::listen_with(|event, status, _window| match event {
-            iced::Event::Keyboard(keyboard::Event::KeyPressed {
-                key: keyboard::Key::Named(keyboard::key::Named::Space),
+            Keyboard(KeyPressed {
+                key: Key::Named(Named::Space),
                 ..
-            }) if status == event::Status::Ignored => Some(Message::Pause),
+            }) if status == Status::Ignored => Some(Message::Pause),
             _ => None,
         });
         let seekbar_subscription = time::every(SEEKBAR_TICK_INTERVAL).map(|_| Message::SeekbarTick);
@@ -191,7 +204,7 @@ impl Playback {
             .step(VOLUME_STEP)
             .width(VOLUME_WIDTH),
         ])
-        .align_x(iced::Alignment::Center)
+        .align_x(Alignment::Center)
         .width(Length::Fill);
 
         let mut cover_and_information = row![].height(Length::Fill);

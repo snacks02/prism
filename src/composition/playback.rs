@@ -174,11 +174,11 @@ impl Playback {
             .player
             .as_ref()
             .is_some_and(|player| !player.is_paused());
-        let pause_icon = if playing {
-            svg::Handle::from_path(ICON_PAUSE_PATH)
+        let pause_icon = svg::Handle::from_path(if playing {
+            ICON_PAUSE_PATH
         } else {
-            svg::Handle::from_path(ICON_PLAY_PATH)
-        };
+            ICON_PLAY_PATH
+        });
         let controls = container(row![
             icon_button(svg::Handle::from_path(ICON_PREVIOUS_PATH)).on_press(Message::Previous),
             icon_button(pause_icon).on_press(Message::Pause),

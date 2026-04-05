@@ -19,15 +19,6 @@ use {
     walkdir::WalkDir,
 };
 
-pub fn from_directory(directory: &Path) -> Vec<Track> {
-    WalkDir::new(directory)
-        .sort_by_file_name()
-        .into_iter()
-        .filter_map(|entry| entry.ok())
-        .filter_map(|entry| from_file(entry.path()))
-        .collect()
-}
-
 pub fn cover_from_file(path: &Path) -> Option<Vec<u8>> {
     let file = File::open(path).ok()?;
     let mut probe_result = default::get_probe()
@@ -62,6 +53,15 @@ pub fn cover_from_file(path: &Path) -> Option<Vec<u8>> {
                 .map(|visual| visual.data.to_vec())
         })
     })
+}
+
+pub fn from_directory(directory: &Path) -> Vec<Track> {
+    WalkDir::new(directory)
+        .sort_by_file_name()
+        .into_iter()
+        .filter_map(|entry| entry.ok())
+        .filter_map(|entry| from_file(entry.path()))
+        .collect()
 }
 
 pub fn from_file(path: &Path) -> Option<Track> {

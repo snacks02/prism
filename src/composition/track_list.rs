@@ -85,7 +85,7 @@ fn icon_button<'a>(icon: svg::Handle) -> Button<'a, Message> {
     .width(BUTTON_SIZE)
 }
 
-fn search_field<'a>(value: &str) -> Element<'a, Message> {
+fn search_text_input<'a>(value: &str) -> Element<'a, Message> {
     stack![
         text_input("Search", value)
             .on_input(Message::SearchInput)
@@ -249,7 +249,7 @@ impl TrackList {
 
     pub fn view(&self) -> Element<'_, Message> {
         let toolbar = row![
-            search_field(&self.search_query),
+            search_text_input(&self.search_query),
             icon_button(svg::Handle::from_memory(icons::FILE)).on_press(Message::FileOpen),
             icon_button(svg::Handle::from_memory(icons::FOLDER)).on_press(Message::FolderOpen),
         ]

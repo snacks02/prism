@@ -231,13 +231,13 @@ impl TrackList {
                 let index = self.active.map_or(0, |index| index.saturating_sub(1));
                 track_activate(index, self)
             }
+            Message::SearchInput(search_query) => {
+                self.search_query = search_query;
+                Event::None
+            }
             Message::TrackDoubleClick(index) => track_activate(index, self),
             Message::TrackListExtend(tracks) => {
                 self.tracks.extend(tracks);
-                Event::None
-            }
-            Message::SearchInput(search_query) => {
-                self.search_query = search_query;
                 Event::None
             }
             Message::TrackPress(index) => {

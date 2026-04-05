@@ -113,13 +113,13 @@ impl Playback {
             }) if status == Status::Ignored => Some(Message::ButtonPauseOrPlayPress),
             _ => None,
         });
-        let seekbar_subscription =
+        let slider_seekbar_subscription =
             time::every(SEEKBAR_TICK_INTERVAL).map(|_| Message::SliderSeekbarTick);
         let track_end_subscription =
             Subscription::run_with(self.track_end_receiver.clone(), on_track_end);
         Subscription::batch([
             keyboard_subscription,
-            seekbar_subscription,
+            slider_seekbar_subscription,
             track_end_subscription,
         ])
     }
@@ -185,11 +185,12 @@ impl Playback {
             .player
             .as_ref()
             .is_some_and(|player| !player.is_paused());
-        let pause_icon = svg::Handle::from_memory(if playing { icons::PAUSE } else { icons::PLAY });
+        let pause_or_play_icon =
+            svg::Handle::from_memory(if playing { icons::PAUSE } else { icons::PLAY });
         let controls = container(row![
             icon_button(svg::Handle::from_memory(icons::PREVIOUS))
                 .on_press(Message::ButtonPreviousPress),
-            icon_button(pause_icon).on_press(Message::ButtonPauseOrPlayPress),
+            icon_button(pause_or_play_icon).on_press(Message::ButtonPauseOrPlayPress),
             icon_button(svg::Handle::from_memory(icons::NEXT)).on_press(Message::ButtonNextPress),
             slider(
                 VOLUME_MINIMUM..=VOLUME_MAXIMUM,
@@ -235,7 +236,7 @@ impl Playback {
                 .map(|player| player.get_pos().as_secs_f32())
                 .unwrap_or(SEEKBAR_MINIMUM)
         });
-        let seekbar = slider(
+        let slider_seekbar = slider(
             SEEKBAR_MINIMUM..=duration,
             position,
             Message::SliderSeekbarMouseDrag,
@@ -244,7 +245,7 @@ impl Playback {
         .step(SEEKBAR_STEP)
         .width(Length::Fill);
 
-        column![cover_and_information, controls, seekbar].into()
+        column![cover_and_information, controls, slider_seekbar].into()
     }
 }
 

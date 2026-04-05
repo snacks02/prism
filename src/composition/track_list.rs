@@ -274,7 +274,7 @@ impl TrackList {
                 .wrapping(Wrapping::None),
         ];
 
-        let rows = trigram::top_indexes(
+        let track_rows = trigram::top_indexes(
             &self.search_query,
             &self
                 .tracks
@@ -320,7 +320,7 @@ impl TrackList {
             .into()
         });
 
-        column![toolbar, scrollable(column![header].extend(rows))].into()
+        column![toolbar, scrollable(column![header].extend(track_rows))].into()
     }
 }
 

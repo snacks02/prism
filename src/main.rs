@@ -1,7 +1,12 @@
+mod composition;
 mod track;
 mod trigram;
-mod widget;
 
+use composition::{
+    playback,
+    toolbar,
+    track_list,
+};
 use iced::widget::{
     column,
     container,
@@ -11,11 +16,6 @@ use iced::{
     Length,
     Subscription,
     Task,
-};
-use widget::{
-    playback,
-    toolbar,
-    track_list,
 };
 
 const FILL_PORTION_PLAYBACK: u16 = 2;

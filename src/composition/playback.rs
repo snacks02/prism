@@ -127,7 +127,7 @@ impl Playback {
     #[must_use]
     pub fn update(&mut self, message: Message) -> Event {
         match message {
-            Message::ButtonNextPress => Event::Next,
+            Message::ButtonNextPress => Event::TrackActivateNext,
             Message::ButtonPauseOrPlayPress => {
                 if let Some(player) = &self.player {
                     if player.is_paused() {
@@ -138,7 +138,7 @@ impl Playback {
                 }
                 Event::None
             }
-            Message::ButtonPreviousPress => Event::Previous,
+            Message::ButtonPreviousPress => Event::TrackActivatePrevious,
             Message::SliderSeekbarMouseDrag(position) => {
                 self.seek_position = Some(position);
                 Event::None
@@ -250,9 +250,9 @@ impl Playback {
 }
 
 pub enum Event {
-    Next,
     None,
-    Previous,
+    TrackActivateNext,
+    TrackActivatePrevious,
 }
 
 #[derive(Clone, Debug)]

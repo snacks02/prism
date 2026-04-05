@@ -170,7 +170,7 @@ impl TrackList {
     #[must_use]
     pub fn update(&mut self, message: Message) -> Event {
         match message {
-            Message::ButtonFileOpenPress => Event::Performed(Task::perform(
+            Message::ButtonFileOpenPress => Event::TaskPerform(Task::perform(
                 async {
                     AsyncFileDialog::new()
                         .pick_file()
@@ -179,7 +179,7 @@ impl TrackList {
                 },
                 Message::PathPick,
             )),
-            Message::ButtonFolderOpenPress => Event::Performed(Task::perform(
+            Message::ButtonFolderOpenPress => Event::TaskPerform(Task::perform(
                 async {
                     AsyncFileDialog::new()
                         .pick_folder()
@@ -205,7 +205,7 @@ impl TrackList {
                 Event::None
             }
             Message::PathPick(None) => Event::None,
-            Message::PathPick(Some(path)) => Event::Performed(Task::perform(
+            Message::PathPick(Some(path)) => Event::TaskPerform(Task::perform(
                 async move {
                     if path.is_dir() {
                         track::from_directory(&path)
@@ -326,7 +326,7 @@ impl TrackList {
 
 pub enum Event {
     None,
-    Performed(Task<Message>),
+    TaskPerform(Task<Message>),
     TrackActivated(Track),
 }
 

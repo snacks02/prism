@@ -1,6 +1,6 @@
 use {
     crate::{
-        icon_paths,
+        icons,
         track,
         track::Track,
     },
@@ -184,15 +184,11 @@ impl Playback {
             .player
             .as_ref()
             .is_some_and(|player| !player.is_paused());
-        let pause_icon = svg::Handle::from_path(if playing {
-            icon_paths::PAUSE
-        } else {
-            icon_paths::PLAY
-        });
+        let pause_icon = svg::Handle::from_memory(if playing { icons::PAUSE } else { icons::PLAY });
         let controls = container(row![
-            icon_button(svg::Handle::from_path(icon_paths::PREVIOUS)).on_press(Message::Previous),
+            icon_button(svg::Handle::from_memory(icons::PREVIOUS)).on_press(Message::Previous),
             icon_button(pause_icon).on_press(Message::Pause),
-            icon_button(svg::Handle::from_path(icon_paths::NEXT)).on_press(Message::Next),
+            icon_button(svg::Handle::from_memory(icons::NEXT)).on_press(Message::Next),
             slider(
                 VOLUME_MINIMUM..=VOLUME_MAXIMUM,
                 self.volume,

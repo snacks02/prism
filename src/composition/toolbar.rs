@@ -1,6 +1,6 @@
 use {
     crate::{
-        icon_paths,
+        icons,
         track,
         track::Track,
     },
@@ -49,7 +49,7 @@ fn search_field<'a>(value: &str) -> Element<'a, Message> {
             .on_input(Message::SearchInput)
             .width(Length::Fill),
         container(
-            svg(svg::Handle::from_path(icon_paths::SEARCH))
+            svg(svg::Handle::from_memory(icons::SEARCH))
                 .height(ICON_SIZE)
                 .width(ICON_SIZE),
         )
@@ -109,8 +109,8 @@ impl Toolbar {
     pub fn view(&self) -> Element<'_, Message> {
         row![
             search_field(&self.search_query),
-            icon_button(svg::Handle::from_path(icon_paths::FILE)).on_press(Message::FileOpen),
-            icon_button(svg::Handle::from_path(icon_paths::FOLDER)).on_press(Message::FolderOpen),
+            icon_button(svg::Handle::from_memory(icons::FILE)).on_press(Message::FileOpen),
+            icon_button(svg::Handle::from_memory(icons::FOLDER)).on_press(Message::FolderOpen),
         ]
         .height(HEIGHT)
         .padding(PADDING)

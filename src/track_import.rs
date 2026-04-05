@@ -55,8 +55,8 @@ pub fn cover_from_file(path: &Path) -> Option<Vec<u8>> {
     })
 }
 
-pub fn from_directory(directory: &Path) -> Vec<Track> {
-    WalkDir::new(directory)
+pub fn from_directory(path: &Path) -> Vec<Track> {
+    WalkDir::new(path)
         .sort_by_file_name()
         .into_iter()
         .filter_map(|entry| entry.ok())

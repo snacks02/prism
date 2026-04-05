@@ -96,11 +96,11 @@ impl Playback {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        let keyboard_subscription = event::listen_with(|event, _status, _window| match event {
+        let keyboard_subscription = event::listen_with(|event, status, _window| match event {
             iced::Event::Keyboard(keyboard::Event::KeyPressed {
                 key: keyboard::Key::Named(keyboard::key::Named::Space),
                 ..
-            }) => Some(Message::Pause),
+            }) if status == event::Status::Ignored => Some(Message::Pause),
             _ => None,
         });
         let seekbar_subscription = time::every(SEEKBAR_TICK_INTERVAL).map(|_| Message::SeekbarTick);

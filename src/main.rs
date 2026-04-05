@@ -6,7 +6,6 @@ mod trigram;
 use {
     composition::{
         playback,
-        toolbar,
         track_list,
     },
     iced::{
@@ -36,7 +35,6 @@ impl Prism {
     fn new() -> Self {
         Self {
             playback: playback::Playback::new(),
-            toolbar: toolbar::Toolbar::new(),
             track_list: track_list::TrackList::new(),
         }
     }
@@ -57,24 +55,9 @@ impl Prism {
                     self.update(Message::TrackList(track_list::Message::Previous))
                 }
             },
-            Message::Toolbar(message) => match self.toolbar.update(message) {
-                toolbar::Event::None => Task::none(),
-                toolbar::Event::Performed(task) => task.map(Message::Toolbar),
-                toolbar::Event::SearchInputed(search_query) => {
-                    let _ = self
-                        .track_list
-                        .update(track_list::Message::SearchInput(search_query));
-                    Task::none()
-                }
-                toolbar::Event::TrackListExtended(tracks) => {
-                    let _ = self
-                        .track_list
-                        .update(track_list::Message::TrackListExtend(tracks));
-                    Task::none()
-                }
-            },
             Message::TrackList(message) => match self.track_list.update(message) {
                 track_list::Event::None => Task::none(),
+                track_list::Event::Performed(task) => task.map(Message::TrackList),
                 track_list::Event::TrackActivated(track) => {
                     let _ = self.playback.update(playback::Message::Play(track));
                     Task::none()
@@ -87,7 +70,6 @@ impl Prism {
         column![
             container(self.playback.view().map(Message::Playback))
                 .height(Length::FillPortion(FILL_PORTION_PLAYBACK)),
-            self.toolbar.view().map(Message::Toolbar),
             container(self.track_list.view().map(Message::TrackList))
                 .height(Length::FillPortion(FILL_PORTION_TRACK_LIST)),
         ]
@@ -99,12 +81,10 @@ impl Prism {
 #[derive(Clone, Debug)]
 pub enum Message {
     Playback(playback::Message),
-    Toolbar(toolbar::Message),
     TrackList(track_list::Message),
 }
 
 struct Prism {
     playback: playback::Playback,
-    toolbar: toolbar::Toolbar,
     track_list: track_list::TrackList,
 }

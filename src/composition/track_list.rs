@@ -1,13 +1,18 @@
 use {
     crate::{
+        icons,
+        track,
         track::Track,
         trigram,
     },
     iced::{
+        Alignment,
+        ContentFit,
         Element,
         Event::Keyboard,
         Length,
         Subscription,
+        Task,
         Theme,
         event,
         keyboard::{
@@ -20,23 +25,38 @@ use {
             key::Named,
         },
         widget::{
+            Button,
+            button,
+            center,
             column,
             container,
             container::Style,
             mouse_area,
             row,
             scrollable,
+            stack,
+            svg,
             text,
             text::{
                 Ellipsis,
                 Wrapping,
             },
+            text_input,
         },
     },
-    std::collections::HashSet,
+    rfd::AsyncFileDialog,
+    std::{
+        collections::HashSet,
+        path::PathBuf,
+    },
 };
 
+const BUTTON_SIZE: u32 = 32;
+const HEIGHT: u32 = 48;
+const ICON_SIZE: u32 = 16;
+const PADDING: u16 = 8;
 const SEARCH_THRESHOLD: f32 = 0.1;
+const SPACING: u32 = 8;
 
 fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize) {
     if track_list.tracks.is_empty() {
@@ -51,6 +71,34 @@ fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize)
     } else {
         track_select_single(index, track_list);
     }
+}
+
+fn icon_button<'a>(icon: svg::Handle) -> Button<'a, Message> {
+    button(center(
+        svg(icon)
+            .content_fit(ContentFit::Fill)
+            .height(ICON_SIZE)
+            .width(ICON_SIZE),
+    ))
+    .height(BUTTON_SIZE)
+    .padding(0)
+    .width(BUTTON_SIZE)
+}
+
+fn search_field<'a>(value: &str) -> Element<'a, Message> {
+    stack![
+        text_input("Search", value)
+            .on_input(Message::SearchInput)
+            .width(Length::Fill),
+        container(
+            svg(svg::Handle::from_memory(icons::SEARCH))
+                .height(ICON_SIZE)
+                .width(ICON_SIZE),
+        )
+        .align_y(Alignment::Center)
+        .height(Length::Fill),
+    ]
+    .into()
 }
 
 fn track_activate(index: usize, track_list: &mut TrackList) -> Event {
@@ -134,6 +182,24 @@ impl TrackList {
                 Some(index) => track_activate(index, self),
                 None => Event::None,
             },
+            Message::FileOpen => Event::Performed(Task::perform(
+                async {
+                    AsyncFileDialog::new()
+                        .pick_file()
+                        .await
+                        .map(|handle| handle.path().to_owned())
+                },
+                Message::PathPick,
+            )),
+            Message::FolderOpen => Event::Performed(Task::perform(
+                async {
+                    AsyncFileDialog::new()
+                        .pick_folder()
+                        .await
+                        .map(|handle| handle.path().to_owned())
+                },
+                Message::PathPick,
+            )),
             Message::KeyboardModifiersChange(keyboard_modifiers) => {
                 self.keyboard_modifiers = keyboard_modifiers;
                 Event::None
@@ -147,6 +213,17 @@ impl TrackList {
                     .map_or(0, |index| (index + 1).min(self.tracks.len() - 1));
                 track_activate(index, self)
             }
+            Message::PathPick(None) => Event::None,
+            Message::PathPick(Some(path)) => Event::Performed(Task::perform(
+                async move {
+                    if path.is_dir() {
+                        track::from_directory(&path)
+                    } else {
+                        track::from_file(&path).into_iter().collect()
+                    }
+                },
+                Message::TrackListExtend,
+            )),
             Message::Previous => {
                 if self.tracks.is_empty() {
                     return Event::None;
@@ -171,6 +248,15 @@ impl TrackList {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
+        let toolbar = row![
+            search_field(&self.search_query),
+            icon_button(svg::Handle::from_memory(icons::FILE)).on_press(Message::FileOpen),
+            icon_button(svg::Handle::from_memory(icons::FOLDER)).on_press(Message::FolderOpen),
+        ]
+        .height(HEIGHT)
+        .padding(PADDING)
+        .spacing(SPACING);
+
         let header = row![
             text("Title")
                 .ellipsis(Ellipsis::End)
@@ -229,12 +315,13 @@ impl TrackList {
                 .into()
             });
 
-        scrollable(column![header].extend(rows)).into()
+        column![toolbar, scrollable(column![header].extend(rows))].into()
     }
 }
 
 pub enum Event {
     None,
+    Performed(Task<Message>),
     TrackActivated(Track),
 }
 
@@ -243,8 +330,11 @@ pub enum Message {
     ArrowDownPress,
     ArrowUpPress,
     EnterPress,
+    FileOpen,
+    FolderOpen,
     KeyboardModifiersChange(Modifiers),
     Next,
+    PathPick(Option<PathBuf>),
     Previous,
     SearchInput(String),
     TrackDoubleClick(usize),

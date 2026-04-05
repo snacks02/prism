@@ -203,17 +203,18 @@ impl TrackList {
                 self.keyboard_modifiers = keyboard_modifiers;
                 Event::None
             }
-            Message::PathPick(None) => Event::None,
-            Message::PathPick(Some(path)) => Event::TaskPerform(Task::perform(
-                async move {
-                    if path.is_dir() {
-                        track_import::from_directory(&path)
-                    } else {
-                        track_import::from_file(&path).into_iter().collect()
-                    }
-                },
-                Message::TrackListExtend,
-            )),
+            Message::PathPick(path) => path.map_or(Event::None, |path| {
+                Event::TaskPerform(Task::perform(
+                    async move {
+                        if path.is_dir() {
+                            track_import::from_directory(&path)
+                        } else {
+                            track_import::from_file(&path).into_iter().collect()
+                        }
+                    },
+                    Message::TrackListExtend,
+                ))
+            }),
             Message::SearchTextInput(search_query) => {
                 self.search_query = search_query;
                 Event::None

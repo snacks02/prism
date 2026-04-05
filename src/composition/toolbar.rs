@@ -1,5 +1,6 @@
 use {
     crate::{
+        icon_paths,
         track,
         track::Track,
     },
@@ -26,9 +27,6 @@ use {
 
 const BUTTON_SIZE: u32 = 32;
 const HEIGHT: u32 = 48;
-const ICON_FILE_PATH: &str = "icons/file.svg";
-const ICON_FOLDER_PATH: &str = "icons/folder.svg";
-const ICON_SEARCH_PATH: &str = "icons/search.svg";
 const ICON_SIZE: u32 = 16;
 const PADDING: u16 = 8;
 const SPACING: u32 = 8;
@@ -51,7 +49,7 @@ fn search_field<'a>(value: &str) -> Element<'a, Message> {
             .on_input(Message::SearchInput)
             .width(Length::Fill),
         container(
-            svg(svg::Handle::from_path(ICON_SEARCH_PATH))
+            svg(svg::Handle::from_path(icon_paths::SEARCH))
                 .height(ICON_SIZE)
                 .width(ICON_SIZE),
         )
@@ -111,8 +109,8 @@ impl Toolbar {
     pub fn view(&self) -> Element<'_, Message> {
         row![
             search_field(&self.search_query),
-            icon_button(svg::Handle::from_path(ICON_FILE_PATH)).on_press(Message::FileOpen),
-            icon_button(svg::Handle::from_path(ICON_FOLDER_PATH)).on_press(Message::FolderOpen),
+            icon_button(svg::Handle::from_path(icon_paths::FILE)).on_press(Message::FileOpen),
+            icon_button(svg::Handle::from_path(icon_paths::FOLDER)).on_press(Message::FolderOpen),
         ]
         .height(HEIGHT)
         .padding(PADDING)

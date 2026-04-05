@@ -1,5 +1,6 @@
 use {
     crate::{
+        icon_paths,
         track,
         track::Track,
     },
@@ -58,10 +59,6 @@ use {
 };
 
 const BUTTON_SIZE: u32 = 32;
-const ICON_NEXT_PATH: &str = "icons/next.svg";
-const ICON_PAUSE_PATH: &str = "icons/pause.svg";
-const ICON_PLAY_PATH: &str = "icons/play.svg";
-const ICON_PREVIOUS_PATH: &str = "icons/previous.svg";
 const ICON_SIZE: u32 = 16;
 const SEEKBAR_MINIMUM: f32 = 0.0;
 const SEEKBAR_STEP: f32 = 0.001;
@@ -188,14 +185,14 @@ impl Playback {
             .as_ref()
             .is_some_and(|player| !player.is_paused());
         let pause_icon = svg::Handle::from_path(if playing {
-            ICON_PAUSE_PATH
+            icon_paths::PAUSE
         } else {
-            ICON_PLAY_PATH
+            icon_paths::PLAY
         });
         let controls = container(row![
-            icon_button(svg::Handle::from_path(ICON_PREVIOUS_PATH)).on_press(Message::Previous),
+            icon_button(svg::Handle::from_path(icon_paths::PREVIOUS)).on_press(Message::Previous),
             icon_button(pause_icon).on_press(Message::Pause),
-            icon_button(svg::Handle::from_path(ICON_NEXT_PATH)).on_press(Message::Next),
+            icon_button(svg::Handle::from_path(icon_paths::NEXT)).on_press(Message::Next),
             slider(
                 VOLUME_MINIMUM..=VOLUME_MAXIMUM,
                 self.volume,

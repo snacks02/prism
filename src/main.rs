@@ -1,4 +1,5 @@
 mod composition;
+mod icon_paths;
 mod track;
 mod trigram;
 

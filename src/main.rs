@@ -1,7 +1,9 @@
 mod composition;
-mod icons;
+mod icon;
+mod style;
 mod track_import;
 mod trigram;
+mod view_helper;
 
 use {
     composition::{
@@ -14,18 +16,25 @@ use {
         Result,
         Subscription,
         Task,
+        theme,
         widget::{
             column,
             container,
+            container::Style,
         },
     },
 };
 
-const FILL_PORTION_PLAYBACK: u16 = 2;
-const FILL_PORTION_TRACK_LIST: u16 = 5;
-
 fn main() -> Result {
     iced::application(Prism::new, Prism::update, Prism::view)
+        .settings(iced::Settings {
+            default_text_size: 14.0.into(),
+            ..Default::default()
+        })
+        .style(|_state, theme| theme::Style {
+            text_color: style::COLOR_GRAY_5,
+            ..theme::default(theme)
+        })
         .subscription(Prism::subscription)
         .title("Prism")
         .run()
@@ -69,13 +78,19 @@ impl Prism {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        column![
-            container(self.playback.view().map(Message::Playback))
-                .height(Length::FillPortion(FILL_PORTION_PLAYBACK)),
-            container(self.track_list.view().map(Message::TrackList))
-                .height(Length::FillPortion(FILL_PORTION_TRACK_LIST)),
-        ]
+        container(
+            column![
+                container(self.playback.view().map(Message::Playback)).height(Length::Shrink),
+                container(self.track_list.view().map(Message::TrackList)).height(Length::Fill),
+            ]
+            .height(Length::Fill),
+        )
         .height(Length::Fill)
+        .style(|_theme| Style {
+            background: Some(style::COLOR_GRAY_1.into()),
+            ..Default::default()
+        })
+        .width(Length::Fill)
         .into()
     }
 }

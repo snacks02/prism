@@ -1,15 +1,19 @@
 use {
     crate::{
-        icons,
+        icon,
+        style,
         track_import,
         trigram,
+        view_helper,
     },
     iced::{
         Alignment,
-        ContentFit,
+        Border,
+        Color,
         Element,
         Event::Keyboard,
         Length,
+        Padding,
         Subscription,
         Task,
         Theme,
@@ -24,8 +28,6 @@ use {
             key::Named,
         },
         widget::{
-            Button,
-            button,
             center,
             column,
             container,
@@ -33,7 +35,6 @@ use {
             mouse_area,
             row,
             scrollable,
-            stack,
             svg,
             text,
             text::{
@@ -50,12 +51,13 @@ use {
     },
 };
 
-const BUTTON_SIZE: u32 = 32;
-const HEIGHT: u32 = 48;
-const ICON_SIZE: u32 = 16;
-const PADDING: u16 = 8;
+const BUTTON_SIZE: u32 = 36;
+const SCROLLBAR_WIDTH: f32 = 10.0;
 const SEARCH_THRESHOLD: f32 = 0.1;
-const SPACING: u32 = 8;
+const TRACK_HEADER_TEXT_SIZE: f32 = 16.0;
+const TRACK_PADDING_HORIZONTAL: u32 = 10;
+const TRACK_ROW_HEIGHT: u32 = 36;
+const TRACK_TEXT_SIZE: f32 = 14.0;
 
 fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize) {
     if track_list.tracks.is_empty() {
@@ -72,31 +74,52 @@ fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize)
     }
 }
 
-fn icon_button<'a>(icon: svg::Handle) -> Button<'a, Message> {
-    button(center(
-        svg(icon)
-            .content_fit(ContentFit::Fill)
-            .height(ICON_SIZE)
-            .width(ICON_SIZE),
-    ))
-    .height(BUTTON_SIZE)
-    .padding(0)
-    .width(BUTTON_SIZE)
-}
-
 fn search_text_input<'a>(value: &str) -> Element<'a, Message> {
-    stack![
+    row![
+        center(
+            svg(svg::Handle::from_memory(icon::SEARCH))
+                .height(style::ICON_SIZE)
+                .style(|_theme, _status| svg::Style {
+                    color: Some(style::COLOR_GRAY_4)
+                })
+                .width(style::ICON_SIZE),
+        )
+        .height(Length::Fill)
+        .width(BUTTON_SIZE),
         text_input("Search", value)
             .on_input(Message::SearchTextInput)
-            .width(Length::Fill),
-        container(
-            svg(svg::Handle::from_memory(icons::SEARCH))
-                .height(ICON_SIZE)
-                .width(ICON_SIZE),
-        )
-        .align_y(Alignment::Center)
-        .height(Length::Fill),
+            .style(|theme, status| text_input::Style {
+                background: Color::TRANSPARENT.into(),
+                border: Default::default(),
+                placeholder: style::COLOR_GRAY_4,
+                ..text_input::default(theme, status)
+            }),
     ]
+    .align_y(Alignment::Center)
+    .into()
+}
+
+fn toolbar(track_list: &TrackList) -> Element<'_, Message> {
+    container(row![
+        search_text_input(&track_list.search_query),
+        view_helper::button(
+            style::COLOR_GRAY_4,
+            svg::Handle::from_memory(icon::FILE),
+            BUTTON_SIZE
+        )
+        .on_press(Message::ButtonFileOpenPress),
+        view_helper::button(
+            style::COLOR_GRAY_4,
+            svg::Handle::from_memory(icon::FOLDER),
+            BUTTON_SIZE
+        )
+        .on_press(Message::ButtonFolderOpenPress),
+    ])
+    .height(BUTTON_SIZE)
+    .style(|_theme| Style {
+        background: Some(style::COLOR_GRAY_2.into()),
+        ..Default::default()
+    })
     .into()
 }
 
@@ -138,12 +161,102 @@ fn track_select_single(index: usize, track_list: &mut TrackList) {
     track_list.shift_arrow_index = None;
 }
 
+fn track_text_container<'a>(size: f32, value: &'a str) -> Element<'a, Message> {
+    container(
+        text(value)
+            .ellipsis(Ellipsis::End)
+            .size(size)
+            .width(Length::Fill)
+            .wrapping(Wrapping::None),
+    )
+    .align_y(Alignment::Center)
+    .height(TRACK_ROW_HEIGHT)
+    .padding(Padding::from(0.0).horizontal(TRACK_PADDING_HORIZONTAL))
+    .into()
+}
+
+fn tracks(track_list: &TrackList) -> Element<'_, Message> {
+    let header = container(row![
+        track_text_container(TRACK_HEADER_TEXT_SIZE, "Title"),
+        track_text_container(TRACK_HEADER_TEXT_SIZE, "Artist"),
+        track_text_container(TRACK_HEADER_TEXT_SIZE, "Album"),
+    ])
+    .style(|_theme| Style {
+        background: Some(style::COLOR_GRAY_2.into()),
+        ..Default::default()
+    });
+
+    let track_rows = trigram::top_indexes(
+        &track_list.search_query,
+        &track_list
+            .tracks
+            .iter()
+            .map(|track| format!("{} {} {}", track.album, track.artist, track.title))
+            .collect::<Vec<String>>(),
+        SEARCH_THRESHOLD,
+    )
+    .into_iter()
+    .enumerate()
+    .map(|(position, index)| {
+        let track = &track_list.tracks[index];
+        let is_active = track_list.active == Some(index);
+        let is_selected = track_list.selected.contains(&index);
+        mouse_area(
+            container(row![
+                track_text_container(TRACK_TEXT_SIZE, &track.title),
+                track_text_container(TRACK_TEXT_SIZE, &track.artist),
+                track_text_container(TRACK_TEXT_SIZE, &track.album),
+            ])
+            .style(move |_theme: &Theme| Style {
+                background: if is_active {
+                    Some(style::COLOR_ACCENT.into())
+                } else if is_selected {
+                    Some(style::COLOR_GRAY_3.into())
+                } else if position % 2 == 1 {
+                    Some(style::COLOR_GRAY_2.into())
+                } else {
+                    None
+                },
+                ..Default::default()
+            }),
+        )
+        .on_double_click(Message::TrackDoubleClick(index))
+        .on_press(Message::TrackPress(index))
+        .into()
+    });
+
+    scrollable(
+        column![header]
+            .extend(track_rows)
+            .padding(Padding::from(0).right(SCROLLBAR_WIDTH)),
+    )
+    .style(|theme, status| scrollable::Style {
+        container: container::Style {
+            background: Some(style::COLOR_GRAY_1.into()),
+            ..Default::default()
+        },
+        vertical_rail: scrollable::Rail {
+            background: Some(style::COLOR_GRAY_1.into()),
+            border: Default::default(),
+            scroller: scrollable::Scroller {
+                background: style::COLOR_GRAY_2.into(),
+                border: Border {
+                    radius: 2.0.into(),
+                    ..Default::default()
+                },
+            },
+        },
+        ..scrollable::default(theme, status)
+    })
+    .into()
+}
+
 impl TrackList {
     pub fn new() -> Self {
         Self {
             active: None,
             anchor: None,
-            keyboard_modifiers: Modifiers::default(),
+            keyboard_modifiers: Default::default(),
             search_query: String::new(),
             selected: HashSet::new(),
             shift_arrow_index: None,
@@ -257,79 +370,7 @@ impl TrackList {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        let toolbar = row![
-            search_text_input(&self.search_query),
-            icon_button(svg::Handle::from_memory(icons::FILE))
-                .on_press(Message::ButtonFileOpenPress),
-            icon_button(svg::Handle::from_memory(icons::FOLDER))
-                .on_press(Message::ButtonFolderOpenPress),
-        ]
-        .height(HEIGHT)
-        .padding(PADDING)
-        .spacing(SPACING);
-
-        let header = row![
-            text("Title")
-                .ellipsis(Ellipsis::End)
-                .width(Length::Fill)
-                .wrapping(Wrapping::None),
-            text("Artist")
-                .ellipsis(Ellipsis::End)
-                .width(Length::Fill)
-                .wrapping(Wrapping::None),
-            text("Album")
-                .ellipsis(Ellipsis::End)
-                .width(Length::Fill)
-                .wrapping(Wrapping::None),
-        ];
-
-        let track_rows = trigram::top_indexes(
-            &self.search_query,
-            &self
-                .tracks
-                .iter()
-                .map(|track| format!("{} {} {}", track.album, track.artist, track.title))
-                .collect::<Vec<String>>(),
-            SEARCH_THRESHOLD,
-        )
-        .into_iter()
-        .map(|index| {
-            let track = &self.tracks[index];
-            let is_active = self.active == Some(index);
-            let is_selected = self.selected.contains(&index);
-            mouse_area(
-                container(row![
-                    text(&track.title)
-                        .ellipsis(Ellipsis::End)
-                        .width(Length::Fill)
-                        .wrapping(Wrapping::None),
-                    text(&track.artist)
-                        .ellipsis(Ellipsis::End)
-                        .width(Length::Fill)
-                        .wrapping(Wrapping::None),
-                    text(&track.album)
-                        .ellipsis(Ellipsis::End)
-                        .width(Length::Fill)
-                        .wrapping(Wrapping::None),
-                ])
-                .style(move |theme: &Theme| Style {
-                    background: if is_active {
-                        Some(theme.palette().primary.strong.color.into())
-                    } else if is_selected {
-                        Some(theme.palette().primary.weak.color.into())
-                    } else {
-                        None
-                    },
-                    ..Style::default()
-                })
-                .width(Length::Fill),
-            )
-            .on_double_click(Message::TrackDoubleClick(index))
-            .on_press(Message::TrackPress(index))
-            .into()
-        });
-
-        column![toolbar, scrollable(column![header].extend(track_rows))].into()
+        column![toolbar(self), tracks(self)].into()
     }
 }
 

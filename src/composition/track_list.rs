@@ -19,12 +19,8 @@ use {
         Theme,
         event,
         keyboard::{
-            Event::{
-                KeyPressed,
-                ModifiersChanged,
-            },
+            Event::KeyPressed,
             Key,
-            Modifiers,
             key::Named,
         },
         widget::{
@@ -63,15 +59,11 @@ fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize)
     if track_list.tracks.is_empty() {
         return;
     }
-    let index = match track_list.shift_arrow_index.or(track_list.anchor) {
+    let index = match track_list.selected {
         Some(current) => step(current, track_list.tracks.len()),
         None => 0,
     };
-    if track_list.keyboard_modifiers.shift() {
-        track_select_shift(index, track_list);
-    } else {
-        track_select_single(index, track_list);
-    }
+    track_list.selected = Some(index);
 }
 
 fn search_text_input<'a>(value: &str) -> Element<'a, Message> {
@@ -125,40 +117,8 @@ fn toolbar(track_list: &TrackList) -> Element<'_, Message> {
 
 fn track_activate(index: usize, track_list: &mut TrackList) -> Event {
     track_list.active = Some(index);
-    track_select_single(index, track_list);
+    track_list.selected = Some(index);
     Event::TrackActivated(track_list.tracks[index].clone())
-}
-
-fn track_select(index: usize, track_list: &mut TrackList) {
-    if track_list.keyboard_modifiers.shift() {
-        track_select_shift(index, track_list);
-    } else if track_list.keyboard_modifiers.control() {
-        if !track_list.selected.remove(&index) {
-            track_list.selected.insert(index);
-        }
-        track_list.anchor = Some(index);
-        track_list.shift_arrow_index = None;
-    } else {
-        track_select_single(index, track_list);
-    }
-}
-
-fn track_select_shift(index: usize, track_list: &mut TrackList) {
-    if !track_list.keyboard_modifiers.control() {
-        track_list.selected.clear();
-    }
-    let anchor = track_list.anchor.unwrap_or(index);
-    track_list
-        .selected
-        .extend(anchor.min(index)..=anchor.max(index));
-    track_list.shift_arrow_index = Some(index);
-}
-
-fn track_select_single(index: usize, track_list: &mut TrackList) {
-    track_list.anchor = Some(index);
-    track_list.selected.clear();
-    track_list.selected.insert(index);
-    track_list.shift_arrow_index = None;
 }
 
 fn track_text_container<'a>(size: f32, value: &'a str) -> Element<'a, Message> {
@@ -200,7 +160,7 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
     .map(|(position, index)| {
         let track = &track_list.tracks[index];
         let is_active = track_list.active == Some(index);
-        let is_selected = track_list.selected.contains(&index);
+        let is_selected = track_list.selected == Some(index);
         mouse_area(
             container(row![
                 track_text_container(TRACK_TEXT_SIZE, &track.title),
@@ -220,7 +180,6 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
                 ..Default::default()
             }),
         )
-        .on_double_click(Message::TrackDoubleClick(index))
         .on_press(Message::TrackPress(index))
         .into()
     });
@@ -255,11 +214,8 @@ impl TrackList {
     pub fn new() -> Self {
         Self {
             active: None,
-            anchor: None,
-            keyboard_modifiers: Default::default(),
             search_query: String::new(),
-            selected: HashSet::new(),
-            shift_arrow_index: None,
+            selected: None,
             tracks: vec![],
         }
     }
@@ -272,9 +228,6 @@ impl TrackList {
                 Key::Named(Named::Enter) => Some(Message::KeyboardKeyEnterPress),
                 _ => None,
             },
-            Keyboard(ModifiersChanged(keyboard_modifiers)) => {
-                Some(Message::KeyboardModifiersChange(keyboard_modifiers))
-            }
             _ => None,
         })
     }
@@ -308,14 +261,10 @@ impl TrackList {
                 arrow_press(self, |index, _| index.saturating_sub(1));
                 Event::None
             }
-            Message::KeyboardKeyEnterPress => match self.anchor {
+            Message::KeyboardKeyEnterPress => match self.selected {
                 Some(index) => track_activate(index, self),
                 None => Event::None,
             },
-            Message::KeyboardModifiersChange(keyboard_modifiers) => {
-                self.keyboard_modifiers = keyboard_modifiers;
-                Event::None
-            }
             Message::PathPick(path) => path.map_or(Event::None, |path| {
                 Event::TaskPerform(Task::perform(
                     async move {
@@ -348,7 +297,6 @@ impl TrackList {
                 let index = self.active.map_or(0, |index| index.saturating_sub(1));
                 track_activate(index, self)
             }
-            Message::TrackDoubleClick(index) => track_activate(index, self),
             Message::TrackListExtend(tracks) => {
                 let opened_file_paths: HashSet<String> = self
                     .tracks
@@ -362,10 +310,7 @@ impl TrackList {
                 );
                 Event::None
             }
-            Message::TrackPress(index) => {
-                track_select(index, self);
-                Event::None
-            }
+            Message::TrackPress(index) => track_activate(index, self),
         }
     }
 
@@ -387,12 +332,10 @@ pub enum Message {
     KeyboardKeyArrowDownPress,
     KeyboardKeyArrowUpPress,
     KeyboardKeyEnterPress,
-    KeyboardModifiersChange(Modifiers),
     PathPick(Option<PathBuf>),
     SearchTextInput(String),
     TrackActivateNext,
     TrackActivatePrevious,
-    TrackDoubleClick(usize),
     TrackListExtend(Vec<Track>),
     TrackPress(usize),
 }
@@ -409,10 +352,7 @@ pub struct Track {
 
 pub struct TrackList {
     active: Option<usize>,
-    anchor: Option<usize>,
-    keyboard_modifiers: Modifiers,
     search_query: String,
-    selected: HashSet<usize>,
-    shift_arrow_index: Option<usize>,
+    selected: Option<usize>,
     tracks: Vec<Track>,
 }

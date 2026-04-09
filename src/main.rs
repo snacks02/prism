@@ -59,6 +59,7 @@ impl Prism {
         match message {
             Message::Playback(message) => match self.playback.update(message) {
                 playback::Event::None => Task::none(),
+                playback::Event::TaskPerform(task) => task.map(Message::Playback),
                 playback::Event::TrackActivateNext => {
                     self.update(Message::TrackList(track_list::Message::TrackActivateNext))
                 }
@@ -70,8 +71,10 @@ impl Prism {
                 track_list::Event::None => Task::none(),
                 track_list::Event::TaskPerform(task) => task.map(Message::TrackList),
                 track_list::Event::TrackActivated(track) => {
-                    let _ = self.playback.update(playback::Message::TrackPlay(track));
-                    Task::none()
+                    match self.playback.update(playback::Message::TrackPlay(track)) {
+                        playback::Event::TaskPerform(task) => task.map(Message::Playback),
+                        _ => Task::none(),
+                    }
                 }
             },
         }

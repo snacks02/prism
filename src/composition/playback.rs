@@ -18,6 +18,7 @@ use {
         Event::Keyboard,
         Length,
         Subscription,
+        Task,
         event,
         event::Status,
         keyboard::{
@@ -111,9 +112,9 @@ fn controls(playback: &Playback) -> Element<'_, Message> {
 }
 
 fn now_playing(playback: &Playback) -> Element<'_, Message> {
-    let cover = container(if let Some(handle) = &playback.cover {
+    let cover = container(if let Some(allocation) = &playback.cover_allocation {
         Element::from(
-            image(handle.clone())
+            image(allocation.handle().clone())
                 .height(Length::Fill)
                 .width(Length::Fill),
         )
@@ -222,7 +223,7 @@ impl Playback {
     pub fn new() -> Self {
         let (sender, receiver) = unbounded::<Message>();
         Self {
-            cover: None,
+            cover_allocation: None,
             handle: DeviceSinkBuilder::open_default_sink().unwrap(),
             player: None,
             seek_position: None,
@@ -267,6 +268,10 @@ impl Playback {
                 Event::None
             }
             Message::ButtonPreviousPress => Event::TrackActivatePrevious,
+            Message::CoverAllocationLoad(allocation) => {
+                self.cover_allocation = allocation;
+                Event::None
+            }
             Message::SliderSeekbarMouseDrag(position) => {
                 self.seek_position = Some(position);
                 Event::None
@@ -300,10 +305,13 @@ impl Playback {
                     let _ = sender.unbounded_send(Message::ButtonNextPress);
                 })));
                 self.player = Some(player);
-                self.cover =
-                    track_import::cover_from_file(&track.path).map(image::Handle::from_bytes);
-                self.track = Some(track);
-                Event::None
+                self.track = Some(track.clone());
+                let cover_task = match track_import::cover_from_file(&track.path) {
+                    None => Task::done(Message::CoverAllocationLoad(None)),
+                    Some(bytes) => image::allocate(image::Handle::from_bytes(bytes))
+                        .map(|result| Message::CoverAllocationLoad(result.ok())),
+                };
+                Event::TaskPerform(cover_task)
             }
         }
     }
@@ -321,6 +329,7 @@ impl hash::Hash for TrackEndReceiver {
 
 pub enum Event {
     None,
+    TaskPerform(Task<Message>),
     TrackActivateNext,
     TrackActivatePrevious,
 }
@@ -330,6 +339,7 @@ pub enum Message {
     ButtonNextPress,
     ButtonPauseOrPlayPress,
     ButtonPreviousPress,
+    CoverAllocationLoad(Option<image::Allocation>),
     SliderSeekbarMouseDrag(f32),
     SliderSeekbarMouseRelease,
     SliderSeekbarTick,
@@ -338,7 +348,7 @@ pub enum Message {
 }
 
 pub struct Playback {
-    cover: Option<image::Handle>,
+    cover_allocation: Option<image::Allocation>,
     handle: MixerDeviceSink,
     player: Option<Player>,
     seek_position: Option<f32>,

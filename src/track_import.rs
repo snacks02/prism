@@ -122,7 +122,7 @@ pub fn from_file(path: &Path) -> Option<Track> {
         album,
         artist,
         duration,
-        file_path: path.to_string_lossy().into_owned(),
+        path: path.to_owned(),
         replay_gain,
         title,
     })

@@ -54,7 +54,6 @@ use {
     std::{
         fs::File,
         hash,
-        path::Path,
         sync::{
             Arc,
             Mutex,
@@ -287,7 +286,7 @@ impl Playback {
                 Event::None
             }
             Message::TrackPlay(track) => {
-                let Ok(file) = File::open(&track.file_path) else {
+                let Ok(file) = File::open(&track.path) else {
                     return Event::None;
                 };
                 let Ok(decoder) = Decoder::try_from(file) else {
@@ -301,8 +300,8 @@ impl Playback {
                     let _ = sender.unbounded_send(Message::ButtonNextPress);
                 })));
                 self.player = Some(player);
-                self.cover = track_import::cover_from_file(Path::new(&track.file_path))
-                    .map(image::Handle::from_bytes);
+                self.cover =
+                    track_import::cover_from_file(&track.path).map(image::Handle::from_bytes);
                 self.track = Some(track);
                 Event::None
             }

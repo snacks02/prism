@@ -283,15 +283,12 @@ impl TrackList {
                 track_activate(index, self)
             }
             Message::TrackListExtend(tracks) => {
-                let opened_file_paths: HashSet<String> = self
-                    .tracks
-                    .iter()
-                    .map(|track| track.file_path.clone())
-                    .collect();
+                let opened_paths: HashSet<PathBuf> =
+                    self.tracks.iter().map(|track| track.path.clone()).collect();
                 self.tracks.extend(
                     tracks
                         .into_iter()
-                        .filter(|track| !opened_file_paths.contains(&track.file_path)),
+                        .filter(|track| !opened_paths.contains(&track.path)),
                 );
                 Event::None
             }
@@ -330,7 +327,7 @@ pub struct Track {
     pub album: String,
     pub artist: String,
     pub duration: Option<f32>,
-    pub file_path: String,
+    pub path: PathBuf,
     pub replay_gain: f32,
     pub title: String,
 }

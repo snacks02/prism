@@ -151,7 +151,14 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
         &track_list
             .tracks
             .iter()
-            .map(|track| format!("{} {} {}", track.album, track.artist, track.title))
+            .map(|track| {
+                format!(
+                    "{} {} {}",
+                    track.album_str(),
+                    track.artist_str(),
+                    track.title_str()
+                )
+            })
             .collect::<Vec<String>>(),
         SEARCH_THRESHOLD,
     )
@@ -163,9 +170,9 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
         let is_selected = track_list.selected == Some(index);
         mouse_area(
             container(row![
-                track_text_container(TRACK_TEXT_SIZE, &track.title),
-                track_text_container(TRACK_TEXT_SIZE, &track.artist),
-                track_text_container(TRACK_TEXT_SIZE, &track.album),
+                track_text_container(TRACK_TEXT_SIZE, track.title_str()),
+                track_text_container(TRACK_TEXT_SIZE, track.artist_str()),
+                track_text_container(TRACK_TEXT_SIZE, track.album_str()),
             ])
             .style(move |_theme: &Theme| Style {
                 background: if is_active {
@@ -208,6 +215,20 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
         ..scrollable::default(theme, status)
     })
     .into()
+}
+
+impl Track {
+    pub fn album_str(&self) -> &str {
+        self.album.as_deref().unwrap_or("")
+    }
+
+    pub fn artist_str(&self) -> &str {
+        self.artist.as_deref().unwrap_or("")
+    }
+
+    pub fn title_str(&self) -> &str {
+        self.title.as_deref().unwrap_or("")
+    }
 }
 
 impl TrackList {
@@ -324,12 +345,12 @@ pub enum Message {
 
 #[derive(Clone, Debug)]
 pub struct Track {
-    pub album: String,
-    pub artist: String,
+    pub album: Option<String>,
+    pub artist: Option<String>,
     pub duration: Option<f32>,
     pub path: PathBuf,
-    pub replay_gain: f32,
-    pub title: String,
+    pub replay_gain: Option<f32>,
+    pub title: Option<String>,
 }
 
 pub struct TrackList {

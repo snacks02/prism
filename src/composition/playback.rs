@@ -130,11 +130,11 @@ fn now_playing(playback: &Playback) -> Element<'_, Message> {
     let track_details = if let Some(track) = &playback.track {
         column![
             Space::new().height(Length::Fill),
-            track_detail_text(&track.title).size(18),
+            track_detail_text(track.title_str()).size(18),
             Space::new().height(Length::Fill),
-            track_detail_text(&track.artist).color(style::COLOR_GRAY_4),
+            track_detail_text(track.artist_str()).color(style::COLOR_GRAY_4),
             Space::new().height(Length::Fill),
-            track_detail_text(&track.album).color(style::COLOR_GRAY_4),
+            track_detail_text(track.album_str()).color(style::COLOR_GRAY_4),
             Space::new().height(Length::Fill),
         ]
         .width(Length::Fill)
@@ -295,7 +295,7 @@ impl Playback {
                 let player = Player::connect_new(self.handle.mixer());
                 player.set_volume(self.volume);
                 let sender = self.track_end_sender.clone();
-                player.append(decoder.amplify_decibel(track.replay_gain));
+                player.append(decoder.amplify_decibel(track.replay_gain.unwrap_or(0.0)));
                 player.append(EmptyCallback::new(Box::new(move || {
                     let _ = sender.unbounded_send(Message::ButtonNextPress);
                 })));

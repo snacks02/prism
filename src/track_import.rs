@@ -65,11 +65,6 @@ pub fn from_directory(path: &Path) -> Vec<Track> {
 }
 
 pub fn from_file(path: &Path) -> Option<Track> {
-    let fallback_title = path
-        .file_stem()
-        .and_then(|stem| stem.to_str())
-        .unwrap_or("Unknown")
-        .to_string();
     let file = File::open(path).ok()?;
 
     let mut probe_result = default::get_probe()
@@ -93,21 +88,21 @@ pub fn from_file(path: &Path) -> Option<Track> {
         .and_then(|metadata| metadata.current().map(|revision| revision.tags().to_vec()))
         .unwrap_or_default();
 
-    let mut album = "Unknown".to_string();
-    let mut artist = "Unknown".to_string();
-    let mut replay_gain = 0.0_f32;
-    let mut title = fallback_title;
+    let mut album = None;
+    let mut artist = None;
+    let mut replay_gain = None;
+    let mut title = None;
 
     for tag in format_tags.iter().chain(probe_tags.iter()) {
         match tag.std_key {
-            Some(StandardTagKey::Album) => album = tag.value.to_string(),
-            Some(StandardTagKey::Artist) => artist = tag.value.to_string(),
+            Some(StandardTagKey::Album) => album = Some(tag.value.to_string()),
+            Some(StandardTagKey::Artist) => artist = Some(tag.value.to_string()),
             Some(StandardTagKey::ReplayGainTrackGain) => {
                 if let Ok(value) = tag.value.to_string().trim_end_matches(" dB").parse::<f32>() {
-                    replay_gain = value;
+                    replay_gain = Some(value);
                 }
             }
-            Some(StandardTagKey::TrackTitle) => title = tag.value.to_string(),
+            Some(StandardTagKey::TrackTitle) => title = Some(tag.value.to_string()),
             _ => {}
         }
     }

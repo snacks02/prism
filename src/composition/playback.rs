@@ -91,7 +91,7 @@ fn controls(playback: &Playback) -> Element<'_, Message> {
         row![
             view_helper::button(
                 style::COLOR_GRAY_5,
-                svg::Handle::from_memory(icon::PREVIOUS),
+                svg::Handle::from_memory(icon::SKIP_BACK),
                 BUTTON_SIZE
             )
             .on_press(Message::ButtonPreviousPress),
@@ -103,7 +103,7 @@ fn controls(playback: &Playback) -> Element<'_, Message> {
             .on_press(Message::ButtonPauseOrPlayPress),
             view_helper::button(
                 style::COLOR_GRAY_5,
-                svg::Handle::from_memory(icon::NEXT),
+                svg::Handle::from_memory(icon::SKIP_FORWARD),
                 BUTTON_SIZE
             )
             .on_press(Message::ButtonNextPress),

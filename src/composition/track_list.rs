@@ -96,13 +96,13 @@ fn toolbar(track_list: &TrackList) -> Element<'_, Message> {
         search_text_input(&track_list.search_query),
         view_helper::button(
             style::COLOR_GRAY_4,
-            svg::Handle::from_memory(icon::FILE),
+            svg::Handle::from_memory(icon::FILE_PLUS),
             BUTTON_SIZE
         )
         .on_press(Message::ButtonFileOpenPress),
         view_helper::button(
             style::COLOR_GRAY_4,
-            svg::Handle::from_memory(icon::FOLDER),
+            svg::Handle::from_memory(icon::FOLDER_PLUS),
             BUTTON_SIZE
         )
         .on_press(Message::ButtonFolderOpenPress),

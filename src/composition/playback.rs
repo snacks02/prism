@@ -64,9 +64,11 @@ use {
 };
 
 const BUTTON_SIZE: u32 = 40;
-const COVER_SIZE: u32 = 88;
+const COVER_BORDER_WIDTH: f32 = 4.0;
+const COVER_ICON_PADDING: f32 = 24.0;
+const COVER_SIZE: u32 = 104;
 const NOW_PLAYING_PADDING: f32 = 8.0;
-const NOW_PLAYING_ROW_HEIGHT: u32 = 104;
+const NOW_PLAYING_ROW_HEIGHT: u32 = 120;
 const NOW_PLAYING_SPACING: u32 = 8;
 const SEEKBAR_HEIGHT: f32 = 36.0;
 const SEEKBAR_STEP: f32 = 0.001;
@@ -119,11 +121,27 @@ fn now_playing(playback: &Playback) -> Element<'_, Message> {
                 .width(Length::Fill),
         )
     } else {
-        Space::new().into()
+        Element::from(
+            center(
+                svg(svg::Handle::from_memory(icon::MUSIC))
+                    .height(Length::Fill)
+                    .style(|_theme, _status| svg::Style {
+                        color: Some(style::COLOR_GRAY_3),
+                    })
+                    .width(Length::Fill),
+            )
+            .padding(COVER_ICON_PADDING),
+        )
     })
     .height(COVER_SIZE)
+    .padding(COVER_BORDER_WIDTH)
     .style(|_theme| Style {
         background: Some(style::COLOR_GRAY_2.into()),
+        border: Border {
+            color: style::COLOR_GRAY_3,
+            width: COVER_BORDER_WIDTH,
+            ..Default::default()
+        },
         ..Default::default()
     })
     .width(COVER_SIZE);

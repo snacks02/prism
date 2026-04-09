@@ -224,7 +224,7 @@ impl Playback {
         let (sender, receiver) = unbounded::<Message>();
         Self {
             cover_allocation: None,
-            handle: DeviceSinkBuilder::open_default_sink().unwrap(),
+            mixer_device_sink: DeviceSinkBuilder::open_default_sink().unwrap(),
             player: None,
             seek_position: None,
             track: None,
@@ -297,7 +297,7 @@ impl Playback {
                 let Ok(decoder) = Decoder::try_from(file) else {
                     return Event::None;
                 };
-                let player = Player::connect_new(self.handle.mixer());
+                let player = Player::connect_new(self.mixer_device_sink.mixer());
                 player.set_volume(self.volume);
                 let sender = self.track_end_sender.clone();
                 player.append(decoder.amplify_decibel(track.replay_gain.unwrap_or(0.0)));
@@ -349,7 +349,7 @@ pub enum Message {
 
 pub struct Playback {
     cover_allocation: Option<image::Allocation>,
-    handle: MixerDeviceSink,
+    mixer_device_sink: MixerDeviceSink,
     player: Option<Player>,
     seek_position: Option<f32>,
     track: Option<Track>,

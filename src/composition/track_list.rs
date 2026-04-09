@@ -236,22 +236,12 @@ impl TrackList {
     pub fn update(&mut self, message: Message) -> Event {
         match message {
             Message::ButtonFileOpenPress => Event::TaskPerform(Task::perform(
-                async {
-                    AsyncFileDialog::new()
-                        .pick_file()
-                        .await
-                        .map(|handle| handle.path().to_owned())
-                },
-                Message::PathPick,
+                AsyncFileDialog::new().pick_file(),
+                |handle| Message::PathPick(handle.map(|handle| handle.path().to_owned())),
             )),
             Message::ButtonFolderOpenPress => Event::TaskPerform(Task::perform(
-                async {
-                    AsyncFileDialog::new()
-                        .pick_folder()
-                        .await
-                        .map(|handle| handle.path().to_owned())
-                },
-                Message::PathPick,
+                AsyncFileDialog::new().pick_folder(),
+                |handle| Message::PathPick(handle.map(|handle| handle.path().to_owned())),
             )),
             Message::KeyboardKeyArrowDownPress => {
                 arrow_press(self, |index, length| (index + 1).min(length - 1));
@@ -266,16 +256,11 @@ impl TrackList {
                 None => Event::None,
             },
             Message::PathPick(path) => path.map_or(Event::None, |path| {
-                Event::TaskPerform(Task::perform(
-                    async move {
-                        if path.is_dir() {
-                            track_import::from_directory(&path)
-                        } else {
-                            track_import::from_file(&path).into_iter().collect()
-                        }
-                    },
-                    Message::TrackListExtend,
-                ))
+                Event::TaskPerform(Task::done(Message::TrackListExtend(if path.is_dir() {
+                    track_import::from_directory(&path)
+                } else {
+                    track_import::from_file(&path).into_iter().collect()
+                })))
             }),
             Message::SearchTextInput(search_query) => {
                 self.search_query = search_query;

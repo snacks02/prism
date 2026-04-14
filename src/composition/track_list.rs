@@ -16,6 +16,7 @@ use {
         Padding,
         Subscription,
         Task,
+        Theme,
         event,
         keyboard::{
             Event::KeyPressed,
@@ -134,7 +135,7 @@ fn track_text_container<'a>(size: f32, value: &'a str) -> Element<'a, Message> {
     .into()
 }
 
-fn tracks(color_accent: Color, track_list: &TrackList) -> Element<'_, Message> {
+fn tracks(track_list: &TrackList) -> Element<'_, Message> {
     let header = container(row![
         track_text_container(TRACK_HEADER_TEXT_SIZE, "Title"),
         track_text_container(TRACK_HEADER_TEXT_SIZE, "Artist"),
@@ -173,9 +174,9 @@ fn tracks(color_accent: Color, track_list: &TrackList) -> Element<'_, Message> {
                 track_text_container(TRACK_TEXT_SIZE, track.artist_str()),
                 track_text_container(TRACK_TEXT_SIZE, track.album_str()),
             ])
-            .style(move |_theme| Style {
+            .style(move |theme: &Theme| Style {
                 background: if is_active {
-                    Some(color_accent.into())
+                    Some(theme.palette().primary.base.color.into())
                 } else if is_selected {
                     Some(style::COLOR_GRAY_3.into())
                 } else if position % 2 == 1 {
@@ -196,12 +197,8 @@ fn tracks(color_accent: Color, track_list: &TrackList) -> Element<'_, Message> {
             .padding(Padding::from(0).right(SCROLLBAR_WIDTH)),
     )
     .style(|theme, status| scrollable::Style {
-        container: container::Style {
-            background: Some(style::COLOR_GRAY_1.into()),
-            ..Default::default()
-        },
         vertical_rail: scrollable::Rail {
-            background: Some(style::COLOR_GRAY_1.into()),
+            background: None,
             border: Default::default(),
             scroller: scrollable::Scroller {
                 background: style::COLOR_GRAY_2.into(),
@@ -316,8 +313,8 @@ impl TrackList {
         }
     }
 
-    pub fn view(&self, color_accent: Color) -> Element<'_, Message> {
-        column![toolbar(self), tracks(color_accent, self)].into()
+    pub fn view(&self) -> Element<'_, Message> {
+        column![toolbar(self), tracks(self)].into()
     }
 }
 

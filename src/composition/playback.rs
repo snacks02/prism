@@ -20,6 +20,7 @@ use {
         Length,
         Subscription,
         Task,
+        Theme,
         event,
         event::Status,
         keyboard::{
@@ -114,7 +115,7 @@ fn controls(playback: &Playback) -> Element<'_, Message> {
     .into()
 }
 
-fn now_playing(color_accent: Color, playback: &Playback) -> Element<'_, Message> {
+fn now_playing(playback: &Playback) -> Element<'_, Message> {
     let cover = container(if let Some(allocation) = &playback.cover_allocation {
         Element::from(
             widget::image(allocation.handle().clone())
@@ -168,15 +169,18 @@ fn now_playing(color_accent: Color, playback: &Playback) -> Element<'_, Message>
         Message::SliderVolumeChange,
     )
     .step(VOLUME_STEP)
-    .style(move |_, _| slider::Style {
+    .style(|theme: &Theme, _| slider::Style {
         handle: slider::Handle {
-            background: color_accent.into(),
-            border_color: color_accent,
+            background: theme.palette().primary.base.color.into(),
+            border_color: theme.palette().primary.base.color,
             border_width: 0.0,
             shape: slider::HandleShape::Circle { radius: 6.0 },
         },
         rail: slider::Rail {
-            backgrounds: (color_accent.into(), style::COLOR_GRAY_4.into()),
+            backgrounds: (
+                theme.palette().primary.base.color.into(),
+                style::COLOR_GRAY_4.into(),
+            ),
             border: Border {
                 radius: 2.0.into(),
                 ..Default::default()
@@ -198,7 +202,7 @@ fn on_track_end(data: &TrackEndReceiver) -> UnboundedReceiver<Message> {
     data.0.lock().unwrap().take().unwrap()
 }
 
-fn seekbar(color_accent: Color, playback: &Playback) -> Element<'_, Message> {
+fn seekbar(playback: &Playback) -> Element<'_, Message> {
     let duration = playback
         .track
         .as_ref()
@@ -215,7 +219,7 @@ fn seekbar(color_accent: Color, playback: &Playback) -> Element<'_, Message> {
         .height(SEEKBAR_HEIGHT)
         .on_release(Message::SliderSeekbarMouseRelease)
         .step(SEEKBAR_STEP)
-        .style(move |_, _| slider::Style {
+        .style(|theme: &Theme, _| slider::Style {
             handle: slider::Handle {
                 background: style::COLOR_GRAY_1.into(),
                 border_color: style::COLOR_GRAY_1,
@@ -226,7 +230,10 @@ fn seekbar(color_accent: Color, playback: &Playback) -> Element<'_, Message> {
                 },
             },
             rail: slider::Rail {
-                backgrounds: (color_accent.into(), style::COLOR_GRAY_1.into()),
+                backgrounds: (
+                    theme.palette().primary.base.color.into(),
+                    style::COLOR_GRAY_1.into(),
+                ),
                 border: Default::default(),
                 width: 36.0,
             },
@@ -340,13 +347,8 @@ impl Playback {
         }
     }
 
-    pub fn view(&self, color_accent: Color) -> Element<'_, Message> {
-        column![
-            now_playing(color_accent, self),
-            controls(self),
-            seekbar(color_accent, self)
-        ]
-        .into()
+    pub fn view(&self) -> Element<'_, Message> {
+        column![now_playing(self), controls(self), seekbar(self)].into()
     }
 }
 

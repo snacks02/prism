@@ -17,11 +17,11 @@ use {
         Result,
         Subscription,
         Task,
+        Theme,
         theme,
         widget::{
             column,
             container,
-            container::Style,
         },
     },
 };
@@ -32,11 +32,8 @@ fn main() -> Result {
             default_text_size: 14.0.into(),
             ..Default::default()
         })
-        .style(|_state, theme| theme::Style {
-            text_color: style::COLOR_GRAY_5,
-            ..theme::default(theme)
-        })
         .subscription(Prism::subscription)
+        .theme(Prism::theme)
         .title("Prism")
         .run()
 }
@@ -55,6 +52,18 @@ impl Prism {
             self.playback.subscription().map(Message::Playback),
             self.track_list.subscription().map(Message::TrackList),
         ])
+    }
+
+    fn theme(&self) -> Theme {
+        Theme::custom(
+            String::from("Prism"),
+            theme::palette::Seed {
+                background: style::COLOR_GRAY_1,
+                primary: self.color_accent,
+                text: style::COLOR_GRAY_5,
+                ..theme::palette::Seed::DARK
+            },
+        )
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
@@ -87,24 +96,11 @@ impl Prism {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        container(
-            column![
-                container(self.playback.view(self.color_accent).map(Message::Playback))
-                    .height(Length::Shrink),
-                container(
-                    self.track_list
-                        .view(self.color_accent)
-                        .map(Message::TrackList)
-                )
-                .height(Length::Fill),
-            ]
-            .height(Length::Fill),
-        )
+        column![
+            container(self.playback.view().map(Message::Playback)).height(Length::Shrink),
+            container(self.track_list.view().map(Message::TrackList)).height(Length::Fill),
+        ]
         .height(Length::Fill)
-        .style(|_theme| Style {
-            background: Some(style::COLOR_GRAY_1.into()),
-            ..Default::default()
-        })
         .width(Length::Fill)
         .into()
     }

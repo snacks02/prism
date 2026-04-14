@@ -59,8 +59,8 @@ fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize)
         return;
     }
     let index = match track_list.selected {
-        Some(current) => step(current, track_list.tracks.len()),
         None => 0,
+        Some(current) => step(current, track_list.tracks.len()),
     };
     track_list.selected = Some(index);
 }
@@ -209,6 +209,7 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
             }
         ),
     ]
+    .height(Length::Fill)
     .into()
 }
 
@@ -268,8 +269,8 @@ impl TrackList {
                 Event::None
             }
             Message::KeyboardKeyEnterPress => match self.selected {
-                Some(index) => track_activate(index, self),
                 None => Event::None,
+                Some(index) => track_activate(index, self),
             },
             Message::PathPick(path) => path.map_or(Event::None, |path| {
                 Event::TaskPerform(Task::done(Message::TrackListExtend(if path.is_dir() {

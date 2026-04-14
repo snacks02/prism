@@ -30,7 +30,7 @@ pub fn cover_from_file(path: &Path) -> Option<Vec<u8>> {
         )
         .ok()?;
 
-    let visual = probe_result
+    probe_result
         .format
         .metadata()
         .current()
@@ -39,20 +39,17 @@ pub fn cover_from_file(path: &Path) -> Option<Vec<u8>> {
                 .visuals()
                 .first()
                 .map(|visual| visual.data.to_vec())
-        });
-
-    if visual.is_some() {
-        return visual;
-    }
-
-    probe_result.metadata.get().and_then(|metadata| {
-        metadata.current().and_then(|revision| {
-            revision
-                .visuals()
-                .first()
-                .map(|visual| visual.data.to_vec())
         })
-    })
+        .or_else(|| {
+            probe_result.metadata.get().and_then(|metadata| {
+                metadata.current().and_then(|revision| {
+                    revision
+                        .visuals()
+                        .first()
+                        .map(|visual| visual.data.to_vec())
+                })
+            })
+        })
 }
 
 pub fn from_directory(path: &Path) -> Vec<Track> {

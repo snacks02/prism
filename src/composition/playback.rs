@@ -139,8 +139,7 @@ fn cover(playback: &Playback) -> Element<'_, Message> {
                 })
                 .width(COVER_ICON_SIZE),
         )
-        .center(Length::Fill)
-        .height(COVER_SIZE)
+        .center(COVER_SIZE)
         .style(|_theme| Style {
             background: Some(style::COLOR_GRAY_1.into()),
             border: Border {
@@ -150,7 +149,6 @@ fn cover(playback: &Playback) -> Element<'_, Message> {
             },
             ..Default::default()
         })
-        .width(COVER_SIZE)
     };
 
     center(container).into()
@@ -340,6 +338,7 @@ impl Playback {
             seekbar(self),
             controls(self),
         ]
+        .height(Length::Shrink)
         .padding(
             Padding::ZERO
                 .horizontal(PADDING_HORIZONTAL)

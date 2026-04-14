@@ -19,10 +19,7 @@ use {
         Task,
         Theme,
         theme,
-        widget::{
-            column,
-            container,
-        },
+        widget::column,
     },
 };
 
@@ -97,8 +94,8 @@ impl Prism {
 
     fn view(&self) -> Element<'_, Message> {
         column![
-            container(self.playback.view().map(Message::Playback)).height(Length::Shrink),
-            container(self.track_list.view().map(Message::TrackList)).height(Length::Fill),
+            self.playback.view().map(Message::Playback),
+            self.track_list.view().map(Message::TrackList),
         ]
         .height(Length::Fill)
         .width(Length::Fill)

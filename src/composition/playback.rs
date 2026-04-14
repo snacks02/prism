@@ -14,6 +14,7 @@ use {
     iced::{
         Alignment,
         Border,
+        Color,
         Element,
         Event::Keyboard,
         Length,
@@ -27,13 +28,13 @@ use {
             key::Named,
         },
         time,
+        widget,
         widget::{
             Space,
             center,
             column,
             container,
             container::Style,
-            image,
             row,
             slider,
             svg,
@@ -113,10 +114,10 @@ fn controls(playback: &Playback) -> Element<'_, Message> {
     .into()
 }
 
-fn now_playing(playback: &Playback) -> Element<'_, Message> {
+fn now_playing(color_accent: Color, playback: &Playback) -> Element<'_, Message> {
     let cover = container(if let Some(allocation) = &playback.cover_allocation {
         Element::from(
-            image(allocation.handle().clone())
+            widget::image(allocation.handle().clone())
                 .height(Length::Fill)
                 .width(Length::Fill),
         )
@@ -167,15 +168,15 @@ fn now_playing(playback: &Playback) -> Element<'_, Message> {
         Message::SliderVolumeChange,
     )
     .step(VOLUME_STEP)
-    .style(|_, _| slider::Style {
+    .style(move |_, _| slider::Style {
         handle: slider::Handle {
-            background: style::COLOR_ACCENT.into(),
-            border_color: style::COLOR_ACCENT,
+            background: color_accent.into(),
+            border_color: color_accent,
             border_width: 0.0,
             shape: slider::HandleShape::Circle { radius: 6.0 },
         },
         rail: slider::Rail {
-            backgrounds: (style::COLOR_ACCENT.into(), style::COLOR_GRAY_4.into()),
+            backgrounds: (color_accent.into(), style::COLOR_GRAY_4.into()),
             border: Border {
                 radius: 2.0.into(),
                 ..Default::default()
@@ -197,7 +198,7 @@ fn on_track_end(data: &TrackEndReceiver) -> UnboundedReceiver<Message> {
     data.0.lock().unwrap().take().unwrap()
 }
 
-fn seekbar(playback: &Playback) -> Element<'_, Message> {
+fn seekbar(color_accent: Color, playback: &Playback) -> Element<'_, Message> {
     let duration = playback
         .track
         .as_ref()
@@ -214,7 +215,7 @@ fn seekbar(playback: &Playback) -> Element<'_, Message> {
         .height(SEEKBAR_HEIGHT)
         .on_release(Message::SliderSeekbarMouseRelease)
         .step(SEEKBAR_STEP)
-        .style(|_, _| slider::Style {
+        .style(move |_, _| slider::Style {
             handle: slider::Handle {
                 background: style::COLOR_GRAY_1.into(),
                 border_color: style::COLOR_GRAY_1,
@@ -225,7 +226,7 @@ fn seekbar(playback: &Playback) -> Element<'_, Message> {
                 },
             },
             rail: slider::Rail {
-                backgrounds: (style::COLOR_ACCENT.into(), style::COLOR_GRAY_1.into()),
+                backgrounds: (color_accent.into(), style::COLOR_GRAY_1.into()),
                 border: Default::default(),
                 width: 36.0,
             },
@@ -286,9 +287,9 @@ impl Playback {
                 Event::None
             }
             Message::ButtonPreviousPress => Event::TrackActivatePrevious,
-            Message::CoverAllocationLoad(allocation) => {
+            Message::CoverAllocationLoad(color_accent, allocation) => {
                 self.cover_allocation = allocation;
-                Event::None
+                Event::AccentColorChange(color_accent)
             }
             Message::SliderSeekbarMouseDrag(position) => {
                 self.seek_position = Some(position);
@@ -325,17 +326,27 @@ impl Playback {
                 self.player = Some(player);
                 self.track = Some(track.clone());
                 let cover_task = match track_import::cover_from_file(&track.path) {
-                    None => Task::done(Message::CoverAllocationLoad(None)),
-                    Some(bytes) => image::allocate(image::Handle::from_bytes(bytes))
-                        .map(|result| Message::CoverAllocationLoad(result.ok())),
+                    None => Task::done(Message::CoverAllocationLoad(style::COLOR_ACCENT, None)),
+                    Some(bytes) => {
+                        let cover = image::load_from_memory(&bytes).ok();
+                        let color_accent = style::accent_color(cover.as_ref());
+                        widget::image::allocate(widget::image::Handle::from_bytes(bytes)).map(
+                            move |result| Message::CoverAllocationLoad(color_accent, result.ok()),
+                        )
+                    }
                 };
                 Event::TaskPerform(cover_task)
             }
         }
     }
 
-    pub fn view(&self) -> Element<'_, Message> {
-        column![now_playing(self), controls(self), seekbar(self)].into()
+    pub fn view(&self, color_accent: Color) -> Element<'_, Message> {
+        column![
+            now_playing(color_accent, self),
+            controls(self),
+            seekbar(color_accent, self)
+        ]
+        .into()
     }
 }
 
@@ -346,6 +357,7 @@ impl hash::Hash for TrackEndReceiver {
 }
 
 pub enum Event {
+    AccentColorChange(Color),
     None,
     TaskPerform(Task<Message>),
     TrackActivateNext,
@@ -357,7 +369,7 @@ pub enum Message {
     ButtonNextPress,
     ButtonPauseOrPlayPress,
     ButtonPreviousPress,
-    CoverAllocationLoad(Option<image::Allocation>),
+    CoverAllocationLoad(Color, Option<widget::image::Allocation>),
     SliderSeekbarMouseDrag(f32),
     SliderSeekbarMouseRelease,
     SliderSeekbarTick,
@@ -366,7 +378,7 @@ pub enum Message {
 }
 
 pub struct Playback {
-    cover_allocation: Option<image::Allocation>,
+    cover_allocation: Option<widget::image::Allocation>,
     mixer_device_sink: MixerDeviceSink,
     player: Option<Player>,
     seek_position: Option<f32>,

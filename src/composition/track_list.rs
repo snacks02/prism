@@ -16,7 +16,6 @@ use {
         Padding,
         Subscription,
         Task,
-        Theme,
         event,
         keyboard::{
             Event::KeyPressed,
@@ -135,7 +134,7 @@ fn track_text_container<'a>(size: f32, value: &'a str) -> Element<'a, Message> {
     .into()
 }
 
-fn tracks(track_list: &TrackList) -> Element<'_, Message> {
+fn tracks(color_accent: Color, track_list: &TrackList) -> Element<'_, Message> {
     let header = container(row![
         track_text_container(TRACK_HEADER_TEXT_SIZE, "Title"),
         track_text_container(TRACK_HEADER_TEXT_SIZE, "Artist"),
@@ -174,9 +173,9 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
                 track_text_container(TRACK_TEXT_SIZE, track.artist_str()),
                 track_text_container(TRACK_TEXT_SIZE, track.album_str()),
             ])
-            .style(move |_theme: &Theme| Style {
+            .style(move |_theme| Style {
                 background: if is_active {
-                    Some(style::COLOR_ACCENT.into())
+                    Some(color_accent.into())
                 } else if is_selected {
                     Some(style::COLOR_GRAY_3.into())
                 } else if position % 2 == 1 {
@@ -317,8 +316,8 @@ impl TrackList {
         }
     }
 
-    pub fn view(&self) -> Element<'_, Message> {
-        column![toolbar(self), tracks(self)].into()
+    pub fn view(&self, color_accent: Color) -> Element<'_, Message> {
+        column![toolbar(self), tracks(color_accent, self)].into()
     }
 }
 

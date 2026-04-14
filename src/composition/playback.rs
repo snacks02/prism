@@ -265,6 +265,7 @@ impl Playback {
     #[must_use]
     pub fn update(&mut self, message: Message) -> Event {
         match message {
+            Message::AccentColorLoad(color) => Event::AccentColorChange(color),
             Message::ButtonNextPress => Event::TrackActivateNext,
             Message::ButtonPauseOrPlayPress => {
                 if let Some(player) = &self.player {
@@ -277,9 +278,9 @@ impl Playback {
                 Event::None
             }
             Message::ButtonPreviousPress => Event::TrackActivatePrevious,
-            Message::CoverAllocationLoad(color_accent, allocation) => {
+            Message::CoverAllocationLoad(allocation) => {
                 self.cover_allocation = allocation;
-                Event::AccentColorChange(color_accent)
+                Event::None
             }
             Message::SliderSeekbarMouseDrag(position) => {
                 self.seek_position = Some(position);
@@ -316,13 +317,18 @@ impl Playback {
                 self.player = Some(player);
                 self.track = Some(track.clone());
                 let cover_task = match track_import::cover_from_file(&track.path) {
-                    None => Task::done(Message::CoverAllocationLoad(style::COLOR_ACCENT, None)),
+                    None => {
+                        self.cover_allocation = None;
+                        Task::done(Message::AccentColorLoad(style::COLOR_ACCENT))
+                    }
                     Some(bytes) => {
                         let cover = image::load_from_memory(&bytes).ok();
                         let color_accent = style::accent_color(cover.as_ref());
-                        widget::image::allocate(widget::image::Handle::from_bytes(bytes)).map(
-                            move |result| Message::CoverAllocationLoad(color_accent, result.ok()),
-                        )
+                        Task::batch([
+                            Task::done(Message::AccentColorLoad(color_accent)),
+                            widget::image::allocate(widget::image::Handle::from_bytes(bytes))
+                                .map(|result| Message::CoverAllocationLoad(result.ok())),
+                        ])
                     }
                 };
                 Event::TaskPerform(cover_task)
@@ -366,10 +372,11 @@ pub enum Event {
 
 #[derive(Clone, Debug)]
 pub enum Message {
+    AccentColorLoad(Color),
     ButtonNextPress,
     ButtonPauseOrPlayPress,
     ButtonPreviousPress,
-    CoverAllocationLoad(Color, Option<widget::image::Allocation>),
+    CoverAllocationLoad(Option<widget::image::Allocation>),
     SliderSeekbarMouseDrag(f32),
     SliderSeekbarMouseRelease,
     SliderSeekbarTick,

@@ -8,16 +8,17 @@ use {
     },
     iced::{
         Alignment,
-        Border,
         Color,
         Element,
         Event::Keyboard,
+        Font,
         Length,
         Padding,
         Subscription,
         Task,
         Theme,
         event,
+        font::Weight,
         keyboard::{
             Event::KeyPressed,
             Key,
@@ -48,12 +49,10 @@ use {
 };
 
 const BUTTON_SIZE: u32 = 36;
+const PADDING_HORIZONTAL: u32 = 10;
+const ROW_HEIGHT: u32 = 36;
 const SCROLLBAR_WIDTH: f32 = 10.0;
 const SEARCH_THRESHOLD: f32 = 0.1;
-const TRACK_HEADER_TEXT_SIZE: f32 = 16.0;
-const TRACK_PADDING_HORIZONTAL: u32 = 10;
-const TRACK_ROW_HEIGHT: u32 = 36;
-const TRACK_TEXT_SIZE: f32 = 14.0;
 
 fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize) {
     if track_list.tracks.is_empty() {
@@ -121,25 +120,28 @@ fn track_activate(index: usize, track_list: &mut TrackList) -> Event {
     Event::TrackActivated(track_list.tracks[index].clone())
 }
 
-fn track_text_container<'a>(size: f32, value: &'a str) -> Element<'a, Message> {
+fn track_text_container<'a>(value: &'a str, weight: Weight) -> Element<'a, Message> {
     container(
         text(value)
             .ellipsis(Ellipsis::End)
-            .size(size)
+            .font(Font {
+                weight,
+                ..Default::default()
+            })
             .width(Length::Fill)
             .wrapping(Wrapping::None),
     )
     .align_y(Alignment::Center)
-    .height(TRACK_ROW_HEIGHT)
-    .padding(Padding::from(0.0).horizontal(TRACK_PADDING_HORIZONTAL))
+    .height(ROW_HEIGHT)
+    .padding(Padding::ZERO.horizontal(PADDING_HORIZONTAL))
     .into()
 }
 
 fn tracks(track_list: &TrackList) -> Element<'_, Message> {
     let header = container(row![
-        track_text_container(TRACK_HEADER_TEXT_SIZE, "Title"),
-        track_text_container(TRACK_HEADER_TEXT_SIZE, "Artist"),
-        track_text_container(TRACK_HEADER_TEXT_SIZE, "Album"),
+        track_text_container("Title", Weight::Bold),
+        track_text_container("Artist", Weight::Bold),
+        track_text_container("Album", Weight::Bold),
     ])
     .style(|_theme| Style {
         background: Some(style::COLOR_GRAY_2.into()),
@@ -170,9 +172,9 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
         let is_selected = track_list.selected == Some(index);
         mouse_area(
             container(row![
-                track_text_container(TRACK_TEXT_SIZE, track.title_str()),
-                track_text_container(TRACK_TEXT_SIZE, track.artist_str()),
-                track_text_container(TRACK_TEXT_SIZE, track.album_str()),
+                track_text_container(track.title_str(), Weight::Normal),
+                track_text_container(track.artist_str(), Weight::Normal),
+                track_text_container(track.album_str(), Weight::Normal),
             ])
             .style(move |theme: &Theme| Style {
                 background: if is_active {
@@ -191,25 +193,22 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
         .into()
     });
 
-    scrollable(
-        column![header]
-            .extend(track_rows)
-            .padding(Padding::from(0).right(SCROLLBAR_WIDTH)),
-    )
-    .style(|theme, status| scrollable::Style {
-        vertical_rail: scrollable::Rail {
-            background: None,
-            border: Default::default(),
-            scroller: scrollable::Scroller {
-                background: style::COLOR_GRAY_2.into(),
-                border: Border {
-                    radius: 2.0.into(),
-                    ..Default::default()
+    column![
+        header.padding(Padding::ZERO.right(SCROLLBAR_WIDTH)),
+        scrollable(column(track_rows).padding(Padding::ZERO.right(SCROLLBAR_WIDTH))).style(
+            |theme, status| scrollable::Style {
+                vertical_rail: scrollable::Rail {
+                    background: None,
+                    border: Default::default(),
+                    scroller: scrollable::Scroller {
+                        background: style::COLOR_GRAY_2.into(),
+                        border: Default::default()
+                    },
                 },
-            },
-        },
-        ..scrollable::default(theme, status)
-    })
+                ..scrollable::default(theme, status)
+            }
+        ),
+    ]
     .into()
 }
 

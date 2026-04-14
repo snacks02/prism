@@ -18,9 +18,9 @@ use {
         Element,
         Event::Keyboard,
         Length,
+        Padding,
         Subscription,
         Task,
-        Theme,
         event,
         event::Status,
         keyboard::{
@@ -31,13 +31,11 @@ use {
         time,
         widget,
         widget::{
-            Space,
             center,
             column,
             container,
             container::Style,
             row,
-            slider,
             svg,
             text,
             text::{
@@ -66,15 +64,16 @@ use {
 };
 
 const BUTTON_SIZE: u32 = 40;
+const COVER_BORDER_RADIUS: f32 = 10.0;
 const COVER_BORDER_WIDTH: f32 = 4.0;
-const COVER_ICON_PADDING: f32 = 24.0;
-const COVER_SIZE: u32 = 104;
-const NOW_PLAYING_PADDING: f32 = 8.0;
-const NOW_PLAYING_ROW_HEIGHT: u32 = 120;
-const NOW_PLAYING_SPACING: u32 = 8;
-const SEEKBAR_HEIGHT: f32 = 36.0;
+const COVER_ICON_SIZE: u32 = 48;
+const COVER_SIZE: u32 = 200;
+const PADDING_HORIZONTAL: f32 = 8.0;
+const PADDING_VERTICAL: f32 = 16.0;
+const SEEKBAR_SPACING: u32 = 8;
 const SEEKBAR_STEP: f32 = 0.001;
 const SEEKBAR_TICK_INTERVAL: Duration = Duration::from_millis(16);
+const SPACING: u32 = 16;
 const VOLUME_MAXIMUM: f32 = 1.0;
 const VOLUME_STEP: f32 = 0.01;
 const VOLUME_WIDTH: u32 = 88;
@@ -98,10 +97,18 @@ fn controls(playback: &Playback) -> Element<'_, Message> {
             )
             .on_press(Message::ButtonPreviousPress),
             view_helper::button(
-                style::COLOR_GRAY_5,
+                Color::TRANSPARENT,
                 svg::Handle::from_memory(pause_or_play_icon),
                 BUTTON_SIZE
             )
+            .style(|_, _| widget::button::Style {
+                background: Some(style::COLOR_GRAY_5.into()),
+                border: Border {
+                    radius: f32::MAX.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
             .on_press(Message::ButtonPauseOrPlayPress),
             view_helper::button(
                 style::COLOR_GRAY_5,
@@ -115,87 +122,65 @@ fn controls(playback: &Playback) -> Element<'_, Message> {
     .into()
 }
 
-fn now_playing(playback: &Playback) -> Element<'_, Message> {
-    let cover = container(if let Some(allocation) = &playback.cover_allocation {
-        Element::from(
+fn cover(playback: &Playback) -> Element<'_, Message> {
+    let container = if let Some(allocation) = &playback.cover_allocation {
+        container(
             widget::image(allocation.handle().clone())
-                .height(Length::Fill)
-                .width(Length::Fill),
+                .border_radius(COVER_BORDER_RADIUS)
+                .height(COVER_SIZE)
+                .width(COVER_SIZE),
         )
     } else {
-        Element::from(
-            center(
-                svg(svg::Handle::from_memory(icon::MUSIC))
-                    .height(Length::Fill)
-                    .style(|_theme, _status| svg::Style {
-                        color: Some(style::COLOR_GRAY_3),
-                    })
-                    .width(Length::Fill),
-            )
-            .padding(COVER_ICON_PADDING),
+        container(
+            svg(svg::Handle::from_memory(icon::MUSIC))
+                .height(COVER_ICON_SIZE)
+                .style(|_theme, _status| svg::Style {
+                    color: Some(style::COLOR_GRAY_3),
+                })
+                .width(COVER_ICON_SIZE),
         )
-    })
-    .height(COVER_SIZE)
-    .padding(COVER_BORDER_WIDTH)
-    .style(|_theme| Style {
-        background: Some(style::COLOR_GRAY_2.into()),
-        border: Border {
-            color: style::COLOR_GRAY_3,
-            width: COVER_BORDER_WIDTH,
+        .center(Length::Fill)
+        .height(COVER_SIZE)
+        .style(|_theme| Style {
+            background: Some(style::COLOR_GRAY_2.into()),
+            border: Border {
+                color: style::COLOR_GRAY_3,
+                radius: COVER_BORDER_RADIUS.into(),
+                width: COVER_BORDER_WIDTH,
+            },
             ..Default::default()
-        },
-        ..Default::default()
-    })
-    .width(COVER_SIZE);
-
-    let track_details = if let Some(track) = &playback.track {
-        column![
-            Space::new().height(Length::Fill),
-            track_detail_text(track.title_str()).size(18),
-            Space::new().height(Length::Fill),
-            track_detail_text(track.artist_str()).color(style::COLOR_GRAY_4),
-            Space::new().height(Length::Fill),
-            track_detail_text(track.album_str()).color(style::COLOR_GRAY_4),
-            Space::new().height(Length::Fill),
-        ]
-        .width(Length::Fill)
-    } else {
-        column![].width(Length::Fill)
+        })
+        .width(COVER_SIZE)
     };
 
-    let volume_slider = slider(
-        0.0..=VOLUME_MAXIMUM,
-        playback.volume,
-        Message::SliderVolumeChange,
-    )
-    .step(VOLUME_STEP)
-    .style(|theme: &Theme, _| slider::Style {
-        handle: slider::Handle {
-            background: theme.palette().primary.base.color.into(),
-            border_color: theme.palette().primary.base.color,
-            border_width: 0.0,
-            shape: slider::HandleShape::Circle { radius: 6.0 },
-        },
-        rail: slider::Rail {
-            backgrounds: (
-                theme.palette().primary.base.color.into(),
-                style::COLOR_GRAY_4.into(),
-            ),
-            border: Border {
-                radius: 2.0.into(),
-                ..Default::default()
-            },
-            width: 3.0,
-        },
-    })
-    .width(VOLUME_WIDTH);
+    center(container).into()
+}
 
-    row![cover, track_details, volume_slider]
-        .height(NOW_PLAYING_ROW_HEIGHT)
-        .padding(NOW_PLAYING_PADDING)
-        .spacing(NOW_PLAYING_SPACING)
-        .width(Length::Fill)
-        .into()
+fn duration_format(seconds: f32) -> String {
+    let total = seconds as u64;
+    let seconds = total % 60;
+    let minutes = (total / 60) % 60;
+    let hours = total / 3600;
+    if hours > 0 {
+        format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+    } else {
+        format!("{:02}:{:02}", minutes, seconds)
+    }
+}
+
+fn information(playback: &Playback) -> Element<'_, Message> {
+    let value = if let Some(track) = &playback.track {
+        format!(
+            "{} :: {} :: {}",
+            track.title_str(),
+            track.artist_str(),
+            track.album_str()
+        )
+    } else {
+        "Select a track".to_string()
+    };
+
+    center(text(value).ellipsis(Ellipsis::End).wrapping(Wrapping::None)).into()
 }
 
 fn on_track_end(data: &TrackEndReceiver) -> UnboundedReceiver<Message> {
@@ -215,34 +200,34 @@ fn seekbar(playback: &Playback) -> Element<'_, Message> {
             .map(|player| player.get_pos().as_secs_f32())
             .unwrap_or(0.0)
     });
-    slider(0.0..=duration, position, Message::SliderSeekbarMouseDrag)
-        .height(SEEKBAR_HEIGHT)
-        .on_release(Message::SliderSeekbarMouseRelease)
-        .step(SEEKBAR_STEP)
-        .style(|theme: &Theme, _| slider::Style {
-            handle: slider::Handle {
-                background: style::COLOR_GRAY_1.into(),
-                border_color: style::COLOR_GRAY_1,
-                border_width: 0.0,
-                shape: slider::HandleShape::Rectangle {
-                    border_radius: Default::default(),
-                    width: 0,
-                },
-            },
-            rail: slider::Rail {
-                backgrounds: (
-                    theme.palette().primary.base.color.into(),
-                    style::COLOR_GRAY_1.into(),
-                ),
-                border: Default::default(),
-                width: 36.0,
-            },
-        })
-        .into()
+    row![
+        text(duration_format(position)),
+        center(view_helper::slider(
+            Message::SliderSeekbarMouseDrag,
+            Some(Message::SliderSeekbarMouseRelease),
+            0.0..=duration,
+            SEEKBAR_STEP,
+            position,
+        )),
+        text(duration_format(duration)),
+    ]
+    .align_y(Alignment::Center)
+    .spacing(SEEKBAR_SPACING)
+    .into()
 }
 
-fn track_detail_text(value: &str) -> text::Text<'_> {
-    text(value).ellipsis(Ellipsis::End).wrapping(Wrapping::None)
+fn volume(playback: &Playback) -> Element<'_, Message> {
+    center(
+        container(view_helper::slider(
+            Message::SliderVolumeChange,
+            None,
+            0.0..=VOLUME_MAXIMUM,
+            VOLUME_STEP,
+            playback.volume,
+        ))
+        .width(VOLUME_WIDTH),
+    )
+    .into()
 }
 
 impl Playback {
@@ -348,7 +333,21 @@ impl Playback {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        column![now_playing(self), controls(self), seekbar(self)].into()
+        column![
+            cover(self),
+            volume(self),
+            information(self),
+            seekbar(self),
+            controls(self),
+        ]
+        .padding(
+            Padding::ZERO
+                .horizontal(PADDING_HORIZONTAL)
+                .vertical(PADDING_VERTICAL),
+        )
+        .spacing(SPACING)
+        .width(Length::Fill)
+        .into()
     }
 }
 

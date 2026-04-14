@@ -58,9 +58,9 @@ impl Prism {
         Theme::custom(
             String::from("Prism"),
             theme::palette::Seed {
-                background: style::COLOR_GRAY_1,
+                background: style::COLOR_BACKGROUND,
                 primary: self.color_accent,
-                text: style::COLOR_GRAY_5,
+                text: style::COLOR_GRAY_4,
                 ..theme::palette::Seed::DARK
             },
         )

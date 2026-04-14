@@ -91,7 +91,7 @@ fn controls(playback: &Playback) -> Element<'_, Message> {
     center(
         row![
             view_helper::button(
-                style::COLOR_GRAY_5,
+                style::COLOR_GRAY_4,
                 svg::Handle::from_memory(icon::SKIP_BACK),
                 BUTTON_SIZE
             )
@@ -102,7 +102,7 @@ fn controls(playback: &Playback) -> Element<'_, Message> {
                 BUTTON_SIZE
             )
             .style(|_, _| widget::button::Style {
-                background: Some(style::COLOR_GRAY_5.into()),
+                background: Some(style::COLOR_GRAY_4.into()),
                 border: Border {
                     radius: f32::MAX.into(),
                     ..Default::default()
@@ -111,7 +111,7 @@ fn controls(playback: &Playback) -> Element<'_, Message> {
             })
             .on_press(Message::ButtonPauseOrPlayPress),
             view_helper::button(
-                style::COLOR_GRAY_5,
+                style::COLOR_GRAY_4,
                 svg::Handle::from_memory(icon::SKIP_FORWARD),
                 BUTTON_SIZE
             )
@@ -135,16 +135,16 @@ fn cover(playback: &Playback) -> Element<'_, Message> {
             svg(svg::Handle::from_memory(icon::MUSIC))
                 .height(COVER_ICON_SIZE)
                 .style(|_theme, _status| svg::Style {
-                    color: Some(style::COLOR_GRAY_3),
+                    color: Some(style::COLOR_GRAY_2),
                 })
                 .width(COVER_ICON_SIZE),
         )
         .center(Length::Fill)
         .height(COVER_SIZE)
         .style(|_theme| Style {
-            background: Some(style::COLOR_GRAY_2.into()),
+            background: Some(style::COLOR_GRAY_1.into()),
             border: Border {
-                color: style::COLOR_GRAY_3,
+                color: style::COLOR_GRAY_2,
                 radius: COVER_BORDER_RADIUS.into(),
                 width: COVER_BORDER_WIDTH,
             },

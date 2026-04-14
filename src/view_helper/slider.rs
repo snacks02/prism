@@ -29,7 +29,7 @@ pub fn slider<'a, Message: 'a + Clone>(
                 shape: widget::slider::HandleShape::Circle { radius: 0.0 },
             },
             rail: widget::slider::Rail {
-                backgrounds: (style::COLOR_GRAY_5.into(), Color::TRANSPARENT.into()),
+                backgrounds: (style::COLOR_GRAY_4.into(), Color::TRANSPARENT.into()),
                 border: Border {
                     radius: RAIL_HEIGHT.into(),
                     ..Default::default()
@@ -44,7 +44,7 @@ pub fn slider<'a, Message: 'a + Clone>(
 
     widget::container(slider)
         .style(|_| widget::container::Style {
-            background: Some(style::COLOR_GRAY_3.into()),
+            background: Some(style::COLOR_GRAY_2.into()),
             border: Border {
                 radius: f32::MAX.into(),
                 ..Default::default()

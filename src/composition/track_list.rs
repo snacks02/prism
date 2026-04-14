@@ -71,7 +71,7 @@ fn search_text_input<'a>(value: &str) -> Element<'a, Message> {
             svg(svg::Handle::from_memory(icon::SEARCH))
                 .height(style::ICON_SIZE)
                 .style(|_theme, _status| svg::Style {
-                    color: Some(style::COLOR_GRAY_4)
+                    color: Some(style::COLOR_GRAY_3)
                 })
                 .width(style::ICON_SIZE),
         )
@@ -82,7 +82,7 @@ fn search_text_input<'a>(value: &str) -> Element<'a, Message> {
             .style(|theme, status| text_input::Style {
                 background: Color::TRANSPARENT.into(),
                 border: Default::default(),
-                placeholder: style::COLOR_GRAY_4,
+                placeholder: style::COLOR_GRAY_3,
                 ..text_input::default(theme, status)
             }),
     ]
@@ -94,13 +94,13 @@ fn toolbar(track_list: &TrackList) -> Element<'_, Message> {
     container(row![
         search_text_input(&track_list.search_query),
         view_helper::button(
-            style::COLOR_GRAY_4,
+            style::COLOR_GRAY_3,
             svg::Handle::from_memory(icon::FILE_PLUS),
             BUTTON_SIZE
         )
         .on_press(Message::ButtonFileOpenPress),
         view_helper::button(
-            style::COLOR_GRAY_4,
+            style::COLOR_GRAY_3,
             svg::Handle::from_memory(icon::FOLDER_PLUS),
             BUTTON_SIZE
         )
@@ -108,7 +108,7 @@ fn toolbar(track_list: &TrackList) -> Element<'_, Message> {
     ])
     .height(BUTTON_SIZE)
     .style(|_theme| Style {
-        background: Some(style::COLOR_GRAY_2.into()),
+        background: Some(style::COLOR_GRAY_1.into()),
         ..Default::default()
     })
     .into()
@@ -144,7 +144,7 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
         track_text_container("Album", Weight::Bold),
     ])
     .style(|_theme| Style {
-        background: Some(style::COLOR_GRAY_2.into()),
+        background: Some(style::COLOR_GRAY_1.into()),
         ..Default::default()
     });
 
@@ -180,9 +180,9 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
                 background: if is_active {
                     Some(theme.palette().primary.base.color.into())
                 } else if is_selected {
-                    Some(style::COLOR_GRAY_3.into())
-                } else if position % 2 == 1 {
                     Some(style::COLOR_GRAY_2.into())
+                } else if position % 2 == 1 {
+                    Some(style::COLOR_GRAY_1.into())
                 } else {
                     None
                 },
@@ -201,7 +201,7 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
                     background: None,
                     border: Default::default(),
                     scroller: scrollable::Scroller {
-                        background: style::COLOR_GRAY_2.into(),
+                        background: style::COLOR_GRAY_1.into(),
                         border: Default::default()
                     },
                 },

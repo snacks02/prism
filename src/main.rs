@@ -77,9 +77,9 @@ impl Prism {
                 playback::Event::None => Task::none(),
                 playback::Event::TaskPerform(task) => task.map(Message::Playback),
                 playback::Event::TrackActivateNext => {
-                    self.update(Message::TrackList(track_list::Message::TrackActivateNext))
+                    Task::done(Message::TrackList(track_list::Message::TrackActivateNext))
                 }
-                playback::Event::TrackActivatePrevious => self.update(Message::TrackList(
+                playback::Event::TrackActivatePrevious => Task::done(Message::TrackList(
                     track_list::Message::TrackActivatePrevious,
                 )),
             },
@@ -87,10 +87,7 @@ impl Prism {
                 track_list::Event::None => Task::none(),
                 track_list::Event::TaskPerform(task) => task.map(Message::TrackList),
                 track_list::Event::TrackActivated(track) => {
-                    match self.playback.update(playback::Message::TrackPlay(track)) {
-                        playback::Event::TaskPerform(task) => task.map(Message::Playback),
-                        _ => Task::none(),
-                    }
+                    Task::done(Message::Playback(playback::Message::TrackPlay(track)))
                 }
             },
         }

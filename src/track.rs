@@ -1,4 +1,7 @@
-use std::path::PathBuf;
+use std::{
+    path::PathBuf,
+    time::Duration,
+};
 
 impl Track {
     pub fn album_str(&self) -> &str {
@@ -18,7 +21,7 @@ impl Track {
 pub struct Track {
     pub album: Option<String>,
     pub artist: Option<String>,
-    pub duration: Option<f32>,
+    pub duration: Option<Duration>,
     pub path: PathBuf,
     pub replay_gain: Option<f32>,
     pub title: Option<String>,

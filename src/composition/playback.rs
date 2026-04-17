@@ -180,6 +180,7 @@ fn seekbar(playback: &Playback) -> Element<'_, Message> {
         .track
         .as_ref()
         .and_then(|track| track.duration)
+        .map(|duration| duration.as_secs_f32())
         .unwrap_or(0.0);
     let position = playback
         .seekbar_position
@@ -287,7 +288,6 @@ impl Playback {
                 if self.audio_player.play(&track).is_err() {
                     return Event::None;
                 }
-                self.track = Some(track.clone());
                 let cover_task = match track_read::cover_from_file(&track.path) {
                     None => {
                         self.cover_allocation = None;
@@ -303,6 +303,7 @@ impl Playback {
                         ])
                     }
                 };
+                self.track = Some(track);
                 Event::TaskPerform(cover_task)
             }
         }

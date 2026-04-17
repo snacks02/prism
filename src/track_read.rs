@@ -3,6 +3,7 @@ use {
     std::{
         fs::File,
         path::Path,
+        time::Duration,
     },
     symphonia::{
         core::{
@@ -106,8 +107,10 @@ pub fn from_file(path: &Path) -> Option<Track> {
 
     let duration = probe_result.format.default_track().and_then(|track| {
         let n_frames = track.codec_params.n_frames?;
-        let sample_rate = track.codec_params.sample_rate?;
-        Some(n_frames as f32 / sample_rate as f32)
+        let sample_rate = track.codec_params.sample_rate? as u64;
+        let seconds = n_frames / sample_rate;
+        let nanoseconds = (n_frames % sample_rate) * 1_000_000_000 / sample_rate;
+        Some(Duration::new(seconds, nanoseconds as u32))
     });
 
     Some(Track {

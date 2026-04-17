@@ -287,13 +287,13 @@ impl TrackList {
                 track_activate(index, self)
             }
             Message::TrackListExtend(tracks) => {
-                let opened_paths: HashSet<PathBuf> =
-                    self.tracks.iter().map(|track| track.path.clone()).collect();
-                self.tracks.extend(
-                    tracks
-                        .into_iter()
-                        .filter(|track| !opened_paths.contains(&track.path)),
-                );
+                let opened_paths: HashSet<&PathBuf> =
+                    self.tracks.iter().map(|track| &track.path).collect();
+                let new_tracks: Vec<Track> = tracks
+                    .into_iter()
+                    .filter(|track| !opened_paths.contains(&track.path))
+                    .collect();
+                self.tracks.extend(new_tracks);
                 Event::None
             }
             Message::TrackPress(index) => track_activate(index, self),

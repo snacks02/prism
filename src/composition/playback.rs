@@ -7,10 +7,6 @@ use {
         track_read,
         view_helper,
     },
-    futures::channel::mpsc::{
-        UnboundedReceiver,
-        unbounded,
-    },
     iced::{
         Alignment,
         Border,
@@ -23,6 +19,10 @@ use {
         Task,
         event,
         event::Status,
+        futures::channel::mpsc::{
+            UnboundedReceiver,
+            unbounded,
+        },
         keyboard::{
             Event::KeyPressed,
             Key,

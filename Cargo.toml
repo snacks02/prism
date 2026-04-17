@@ -4,7 +4,6 @@ name = "prism"
 version = "0.1.0"
 
 [dependencies]
-futures = "0.3"
 iced = { features = ["advanced", "image", "smol", "svg"], git = "https://github.com/iced-rs/iced" }
 image = "0.25"
 rfd = "0.16"

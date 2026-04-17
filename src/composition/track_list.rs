@@ -2,6 +2,7 @@ use {
     crate::{
         icon,
         style,
+        track::Track,
         track_import,
         trigram,
         view_helper,
@@ -213,20 +214,6 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
     .into()
 }
 
-impl Track {
-    pub fn album_str(&self) -> &str {
-        self.album.as_deref().unwrap_or("")
-    }
-
-    pub fn artist_str(&self) -> &str {
-        self.artist.as_deref().unwrap_or("")
-    }
-
-    pub fn title_str(&self) -> &str {
-        self.title.as_deref().unwrap_or("")
-    }
-}
-
 impl TrackList {
     pub fn new() -> Self {
         Self {
@@ -337,16 +324,6 @@ pub enum Message {
     TrackActivatePrevious,
     TrackListExtend(Vec<Track>),
     TrackPress(usize),
-}
-
-#[derive(Clone, Debug)]
-pub struct Track {
-    pub album: Option<String>,
-    pub artist: Option<String>,
-    pub duration: Option<f32>,
-    pub path: PathBuf,
-    pub replay_gain: Option<f32>,
-    pub title: Option<String>,
 }
 
 pub struct TrackList {

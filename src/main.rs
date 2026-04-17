@@ -1,6 +1,7 @@
 mod composition;
 mod icon;
 mod style;
+mod track;
 mod track_import;
 mod trigram;
 mod view_helper;

@@ -1,5 +1,5 @@
 use {
-    crate::composition::track_list::Track,
+    crate::track::Track,
     std::{
         fs::File,
         path::Path,

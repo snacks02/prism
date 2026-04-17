@@ -1,8 +1,8 @@
 use {
     crate::{
-        composition::track_list::Track,
         icon,
         style,
+        track::Track,
         track_import,
         view_helper,
     },

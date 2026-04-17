@@ -3,7 +3,7 @@ use {
         icon,
         style,
         track::Track,
-        track_import,
+        track_read,
         view_helper,
     },
     futures::channel::mpsc::{
@@ -320,7 +320,7 @@ impl Playback {
                 })));
                 self.player = Some(player);
                 self.track = Some(track.clone());
-                let cover_task = match track_import::cover_from_file(&track.path) {
+                let cover_task = match track_read::cover_from_file(&track.path) {
                     None => {
                         self.cover_allocation = None;
                         Task::done(Message::AccentColorLoad(style::COLOR_ACCENT))

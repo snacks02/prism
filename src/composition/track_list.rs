@@ -3,7 +3,7 @@ use {
         icon,
         style,
         track::Track,
-        track_import,
+        track_read,
         trigram,
         view_helper,
     },
@@ -261,9 +261,9 @@ impl TrackList {
             },
             Message::PathPick(path) => path.map_or(Event::None, |path| {
                 Event::TaskPerform(Task::done(Message::TrackListExtend(if path.is_dir() {
-                    track_import::from_directory(&path)
+                    track_read::from_directory(&path)
                 } else {
-                    track_import::from_file(&path).into_iter().collect()
+                    track_read::from_file(&path).into_iter().collect()
                 })))
             }),
             Message::SearchTextInput(search_query) => {

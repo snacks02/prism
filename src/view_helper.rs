@@ -1,5 +1,5 @@
-pub mod button;
-pub mod slider;
+mod button;
+mod slider;
 
 pub use button::button;
 pub use slider::slider;

@@ -31,6 +31,7 @@ use {
         time,
         widget,
         widget::{
+            Text,
             center,
             column,
             container,
@@ -70,6 +71,7 @@ const COVER_ICON_SIZE: u32 = 48;
 const COVER_SIZE: u32 = 200;
 const PADDING_HORIZONTAL: f32 = 8.0;
 const PADDING_VERTICAL: f32 = 16.0;
+const SEEKBAR_DURATION_WIDTH: u32 = 40;
 const SEEKBAR_SPACING: u32 = 8;
 const SEEKBAR_STEP: f32 = 0.001;
 const SEEKBAR_TICK_INTERVAL: Duration = Duration::from_millis(16);
@@ -154,16 +156,18 @@ fn cover(playback: &Playback) -> Element<'_, Message> {
     center(container).into()
 }
 
-fn duration_format(seconds: f32) -> String {
-    let total = seconds as u64;
-    let seconds = total % 60;
-    let minutes = (total / 60) % 60;
-    let hours = total / 3600;
-    if hours > 0 {
-        format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
-    } else {
-        format!("{:02}:{:02}", minutes, seconds)
-    }
+fn duration_text<'a>(seconds: f32) -> Text<'a> {
+    let clamped = seconds.min(5999.0) as i32;
+    let overflow = seconds >= 6000.0;
+
+    text(format!(
+        "{:02}:{:02}{}",
+        clamped / 60,
+        clamped % 60,
+        if overflow { "+" } else { "" }
+    ))
+    .align_x(Alignment::Center)
+    .width(SEEKBAR_DURATION_WIDTH)
 }
 
 fn information(playback: &Playback) -> Element<'_, Message> {
@@ -199,7 +203,7 @@ fn seekbar(playback: &Playback) -> Element<'_, Message> {
             .unwrap_or(0.0)
     });
     row![
-        text(duration_format(position)),
+        duration_text(position),
         center(view_helper::slider(
             Message::SliderSeekbarMouseDrag,
             Some(Message::SliderSeekbarMouseRelease),
@@ -207,7 +211,7 @@ fn seekbar(playback: &Playback) -> Element<'_, Message> {
             SEEKBAR_STEP,
             position,
         )),
-        text(duration_format(duration)),
+        duration_text(duration),
     ]
     .align_y(Alignment::Center)
     .spacing(SEEKBAR_SPACING)

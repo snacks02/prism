@@ -62,11 +62,14 @@ const COVER_ICON_SIZE: u32 = 48;
 const COVER_SIZE: u32 = 200;
 const PADDING_HORIZONTAL: f32 = 8.0;
 const PADDING_VERTICAL: f32 = 16.0;
+const SEEKBAR_DURATION_CLAMP: f32 = 5999.0;
+const SEEKBAR_DURATION_OVERFLOW: f32 = 6000.0;
 const SEEKBAR_DURATION_WIDTH: u32 = 40;
 const SEEKBAR_SPACING: u32 = 8;
 const SEEKBAR_STEP: f32 = 0.001;
 const SEEKBAR_TICK_INTERVAL: Duration = Duration::from_millis(16);
 const SPACING: u32 = 16;
+const VOLUME_DEFAULT: f32 = VOLUME_MAXIMUM / 2.0;
 const VOLUME_MAXIMUM: f32 = 1.0;
 const VOLUME_STEP: f32 = 0.01;
 const VOLUME_WIDTH: u32 = 88;
@@ -144,8 +147,8 @@ fn cover(playback: &Playback) -> Element<'_, Message> {
 }
 
 fn duration_text<'a>(seconds: f32) -> Text<'a> {
-    let clamped = seconds.min(5999.0) as i32;
-    let overflow = seconds >= 6000.0;
+    let clamped = seconds.min(SEEKBAR_DURATION_CLAMP) as i32;
+    let overflow = seconds >= SEEKBAR_DURATION_OVERFLOW;
 
     text(format!(
         "{:02}:{:02}{}",
@@ -218,7 +221,7 @@ impl Playback {
             Arc::new(move || {
                 track_end_sender.unbounded_send(()).ok();
             }),
-            VOLUME_MAXIMUM / 2.0,
+            VOLUME_DEFAULT,
         );
         Self {
             audio_player,

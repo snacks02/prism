@@ -25,10 +25,12 @@ use {
     },
 };
 
+const DEFAULT_TEXT_SIZE: f32 = 14.0;
+
 fn main() -> Result {
     iced::application(Prism::new, Prism::update, Prism::view)
         .settings(iced::Settings {
-            default_text_size: 14.0.into(),
+            default_text_size: DEFAULT_TEXT_SIZE.into(),
             ..Default::default()
         })
         .subscription(Prism::subscription)

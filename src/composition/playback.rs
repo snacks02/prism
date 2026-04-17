@@ -1,5 +1,6 @@
 use {
     crate::{
+        audio_player::AudioPlayer,
         icon,
         style,
         track::Track,
@@ -8,7 +9,6 @@ use {
     },
     futures::channel::mpsc::{
         UnboundedReceiver,
-        UnboundedSender,
         unbounded,
     },
     iced::{
@@ -45,16 +45,7 @@ use {
             },
         },
     },
-    rodio::{
-        Decoder,
-        DeviceSinkBuilder,
-        MixerDeviceSink,
-        Player,
-        Source,
-        source::EmptyCallback,
-    },
     std::{
-        fs::File,
         hash,
         sync::{
             Arc,
@@ -81,11 +72,7 @@ const VOLUME_STEP: f32 = 0.01;
 const VOLUME_WIDTH: u32 = 88;
 
 fn controls(playback: &Playback) -> Element<'_, Message> {
-    let pause_or_play_icon = if playback
-        .player
-        .as_ref()
-        .is_some_and(|player| !player.is_paused())
-    {
+    let pause_or_play_icon = if playback.audio_player.active() {
         icon::PAUSE
     } else {
         icon::PLAY
@@ -185,23 +172,15 @@ fn information(playback: &Playback) -> Element<'_, Message> {
     center(text(value).ellipsis(Ellipsis::End).wrapping(Wrapping::None)).into()
 }
 
-fn on_track_end(data: &TrackEndReceiver) -> UnboundedReceiver<Message> {
-    data.0.lock().unwrap().take().unwrap()
-}
-
 fn seekbar(playback: &Playback) -> Element<'_, Message> {
     let duration = playback
         .track
         .as_ref()
         .and_then(|track| track.duration)
         .unwrap_or(0.0);
-    let position = playback.seek_position.unwrap_or_else(|| {
-        playback
-            .player
-            .as_ref()
-            .map(|player| player.get_pos().as_secs_f32())
-            .unwrap_or(0.0)
-    });
+    let position = playback
+        .seekbar_position
+        .unwrap_or_else(|| playback.audio_player.position());
     row![
         duration_text(position),
         center(view_helper::slider(
@@ -225,7 +204,7 @@ fn volume(playback: &Playback) -> Element<'_, Message> {
             None,
             0.0..=VOLUME_MAXIMUM,
             VOLUME_STEP,
-            playback.volume,
+            playback.audio_player.volume(),
         ))
         .width(VOLUME_WIDTH),
     )
@@ -234,16 +213,19 @@ fn volume(playback: &Playback) -> Element<'_, Message> {
 
 impl Playback {
     pub fn new() -> Self {
-        let (sender, receiver) = unbounded::<Message>();
+        let (track_end_sender, track_end_receiver) = unbounded::<()>();
+        let audio_player = AudioPlayer::new(
+            Arc::new(move || {
+                track_end_sender.unbounded_send(()).ok();
+            }),
+            VOLUME_MAXIMUM / 2.0,
+        );
         Self {
+            audio_player,
             cover_allocation: None,
-            mixer_device_sink: DeviceSinkBuilder::open_default_sink().unwrap(),
-            player: None,
-            seek_position: None,
+            seekbar_position: None,
             track: None,
-            track_end_receiver: TrackEndReceiver(Arc::new(Mutex::new(Some(receiver)))),
-            track_end_sender: sender,
-            volume: VOLUME_MAXIMUM / 2f32,
+            track_end_receiver: TrackEndReceiver(Arc::new(Mutex::new(Some(track_end_receiver)))),
         }
     }
 
@@ -258,7 +240,10 @@ impl Playback {
         let slider_seekbar_subscription =
             time::every(SEEKBAR_TICK_INTERVAL).map(|_| Message::SliderSeekbarTick);
         let track_end_subscription =
-            Subscription::run_with(self.track_end_receiver.clone(), on_track_end);
+            Subscription::run_with(self.track_end_receiver.clone(), |receiver| {
+                receiver.0.lock().unwrap().take().unwrap()
+            })
+            .map(|_| Message::ButtonNextPress);
         Subscription::batch([
             keyboard_subscription,
             slider_seekbar_subscription,
@@ -272,13 +257,7 @@ impl Playback {
             Message::AccentColorLoad(color) => Event::AccentColorChange(color),
             Message::ButtonNextPress => Event::TrackActivateNext,
             Message::ButtonPauseOrPlayPress => {
-                if let Some(player) = &self.player {
-                    if player.is_paused() {
-                        player.play();
-                    } else {
-                        player.pause();
-                    }
-                }
+                self.audio_player.pause_or_play();
                 Event::None
             }
             Message::ButtonPreviousPress => Event::TrackActivatePrevious,
@@ -287,38 +266,24 @@ impl Playback {
                 Event::None
             }
             Message::SliderSeekbarMouseDrag(position) => {
-                self.seek_position = Some(position);
+                self.seekbar_position = Some(position);
                 Event::None
             }
             Message::SliderSeekbarMouseRelease => {
-                if let (Some(position), Some(player)) = (self.seek_position.take(), &self.player) {
-                    let _ = player.try_seek(Duration::from_secs_f32(position));
+                if let Some(position) = self.seekbar_position.take() {
+                    self.audio_player.try_seek(position);
                 }
                 Event::None
             }
             Message::SliderSeekbarTick => Event::None,
             Message::SliderVolumeChange(volume) => {
-                self.volume = volume;
-                if let Some(player) = &self.player {
-                    player.set_volume(volume);
-                }
+                self.audio_player.set_volume(volume);
                 Event::None
             }
             Message::TrackPlay(track) => {
-                let Ok(file) = File::open(&track.path) else {
+                if self.audio_player.play(&track).is_err() {
                     return Event::None;
-                };
-                let Ok(decoder) = Decoder::try_from(file) else {
-                    return Event::None;
-                };
-                let player = Player::connect_new(self.mixer_device_sink.mixer());
-                player.set_volume(self.volume);
-                let sender = self.track_end_sender.clone();
-                player.append(decoder.amplify_decibel(track.replay_gain.unwrap_or(0.0)));
-                player.append(EmptyCallback::new(Box::new(move || {
-                    let _ = sender.unbounded_send(Message::ButtonNextPress);
-                })));
-                self.player = Some(player);
+                }
                 self.track = Some(track.clone());
                 let cover_task = match track_read::cover_from_file(&track.path) {
                     None => {
@@ -389,15 +354,12 @@ pub enum Message {
 }
 
 pub struct Playback {
+    audio_player: AudioPlayer,
     cover_allocation: Option<widget::image::Allocation>,
-    mixer_device_sink: MixerDeviceSink,
-    player: Option<Player>,
-    seek_position: Option<f32>,
+    seekbar_position: Option<f32>,
     track: Option<Track>,
     track_end_receiver: TrackEndReceiver,
-    track_end_sender: UnboundedSender<Message>,
-    volume: f32,
 }
 
 #[derive(Clone, Debug)]
-struct TrackEndReceiver(Arc<Mutex<Option<UnboundedReceiver<Message>>>>);
+struct TrackEndReceiver(Arc<Mutex<Option<UnboundedReceiver<()>>>>);

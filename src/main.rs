@@ -1,3 +1,4 @@
+mod audio_player;
 mod composition;
 mod icon;
 mod style;

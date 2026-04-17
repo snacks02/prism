@@ -118,7 +118,7 @@ fn toolbar(track_list: &TrackList) -> Element<'_, Message> {
 fn track_activate(index: usize, track_list: &mut TrackList) -> Event {
     track_list.active = Some(index);
     track_list.selected = Some(index);
-    Event::TrackActivated(track_list.tracks[index].clone())
+    Event::TrackActivate(track_list.tracks[index].clone())
 }
 
 fn track_text_container<'a>(value: &'a str, weight: Weight) -> Element<'a, Message> {
@@ -308,7 +308,7 @@ impl TrackList {
 pub enum Event {
     None,
     TaskPerform(Task<Message>),
-    TrackActivated(Track),
+    TrackActivate(Track),
 }
 
 #[derive(Clone, Debug)]

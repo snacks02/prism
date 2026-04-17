@@ -86,7 +86,7 @@ impl Prism {
             Message::TrackList(message) => match self.track_list.update(message) {
                 track_list::Event::None => Task::none(),
                 track_list::Event::TaskPerform(task) => task.map(Message::TrackList),
-                track_list::Event::TrackActivated(track) => {
+                track_list::Event::TrackActivate(track) => {
                     Task::done(Message::Playback(playback::Message::TrackPlay(track)))
                 }
             },

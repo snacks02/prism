@@ -4,7 +4,6 @@ use {
         style,
         track::Track,
         track_read,
-        trigram,
         view_helper,
     },
     iced::{
@@ -42,8 +41,17 @@ use {
             text_input,
         },
     },
+    nucleo::{
+        Utf32String,
+        pattern::{
+            CaseMatching,
+            Normalization,
+            Pattern,
+        },
+    },
     rfd::AsyncFileDialog,
     std::{
+        cmp::Reverse,
         collections::HashSet,
         path::PathBuf,
     },
@@ -53,7 +61,6 @@ const BUTTON_SIZE: u32 = 36;
 const PADDING_HORIZONTAL: u32 = 10;
 const ROW_HEIGHT: u32 = 36;
 const SCROLLBAR_WIDTH: f32 = 10.0;
-const SEARCH_THRESHOLD: f32 = 0.1;
 
 fn arrow_press(track_list: &mut TrackList, step: impl Fn(usize, usize) -> usize) {
     if track_list.tracks.is_empty() {
@@ -149,50 +156,61 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
         ..Default::default()
     });
 
-    let track_rows = trigram::top_indexes(
-        &track_list.search_query,
-        &track_list
-            .tracks
-            .iter()
-            .map(|track| {
-                format!(
+    let mut scored: Vec<(usize, u32)> = track_list
+        .tracks
+        .iter()
+        .enumerate()
+        .filter_map(|(index, track)| {
+            Pattern::parse(
+                &track_list.search_query,
+                CaseMatching::Ignore,
+                Normalization::Smart,
+            )
+            .score(
+                Utf32String::from(format!(
                     "{} {} {}",
                     track.album_str(),
                     track.artist_str(),
                     track.title_str()
+                ))
+                .slice(..),
+                &mut Default::default(),
+            )
+            .map(|score| (index, score))
+        })
+        .collect();
+    scored.sort_unstable_by_key(|&(_, score)| Reverse(score));
+    let track_rows =
+        scored
+            .into_iter()
+            .map(|(index, _)| index)
+            .enumerate()
+            .map(|(position, index)| {
+                let track = &track_list.tracks[index];
+                let is_active = track_list.active == Some(index);
+                let is_selected = track_list.selected == Some(index);
+                mouse_area(
+                    container(row![
+                        track_text_container(track.title_str(), Weight::Normal),
+                        track_text_container(track.artist_str(), Weight::Normal),
+                        track_text_container(track.album_str(), Weight::Normal),
+                    ])
+                    .style(move |theme: &Theme| Style {
+                        background: if is_active {
+                            Some(theme.palette().primary.base.color.into())
+                        } else if is_selected {
+                            Some(style::COLOR_GRAY_2.into())
+                        } else if position % 2 == 1 {
+                            Some(style::COLOR_GRAY_1.into())
+                        } else {
+                            None
+                        },
+                        ..Default::default()
+                    }),
                 )
-            })
-            .collect::<Vec<String>>(),
-        SEARCH_THRESHOLD,
-    )
-    .into_iter()
-    .enumerate()
-    .map(|(position, index)| {
-        let track = &track_list.tracks[index];
-        let is_active = track_list.active == Some(index);
-        let is_selected = track_list.selected == Some(index);
-        mouse_area(
-            container(row![
-                track_text_container(track.title_str(), Weight::Normal),
-                track_text_container(track.artist_str(), Weight::Normal),
-                track_text_container(track.album_str(), Weight::Normal),
-            ])
-            .style(move |theme: &Theme| Style {
-                background: if is_active {
-                    Some(theme.palette().primary.base.color.into())
-                } else if is_selected {
-                    Some(style::COLOR_GRAY_2.into())
-                } else if position % 2 == 1 {
-                    Some(style::COLOR_GRAY_1.into())
-                } else {
-                    None
-                },
-                ..Default::default()
-            }),
-        )
-        .on_press(Message::TrackPress(index))
-        .into()
-    });
+                .on_press(Message::TrackPress(index))
+                .into()
+            });
 
     column![
         header.padding(Padding::ZERO.right(SCROLLBAR_WIDTH)),

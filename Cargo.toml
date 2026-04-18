@@ -6,6 +6,7 @@ version = "0.1.0"
 [dependencies]
 iced = { features = ["image", "smol", "svg"], git = "https://github.com/iced-rs/iced" }
 image = "0.25"
+nucleo = "0.5"
 rfd = "0.16"
 rodio = "0.22"
 symphonia = { features = ["all"], version = "0.5" }

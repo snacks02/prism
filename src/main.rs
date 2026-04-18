@@ -4,7 +4,6 @@ mod icon;
 mod style;
 mod track;
 mod track_read;
-mod trigram;
 mod view_helper;
 
 use {

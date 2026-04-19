@@ -1,12 +1,8 @@
 use {
     crate::track::Track,
-    iced::futures::channel::mpsc,
     std::{
         hash,
-        sync::{
-            Arc,
-            Mutex,
-        },
+        sync::Arc,
     },
 };
 
@@ -21,12 +17,12 @@ pub struct Queue {
 
 impl Default for Queue {
     fn default() -> Self {
-        let (track_end_sender, track_end_receiver) = mpsc::unbounded();
+        let (track_end_sender, track_end_receiver) = async_channel::unbounded();
         Self {
             current: None,
             repeat: false,
             shuffle: false,
-            track_end_receiver: TrackEndReceiver(Arc::new(Mutex::new(Some(track_end_receiver)))),
+            track_end_receiver: TrackEndReceiver(Arc::new(track_end_receiver)),
             track_end_sender,
             tracks: vec![],
         }
@@ -121,11 +117,9 @@ impl Queue {
 }
 
 #[derive(Clone, Debug)]
-pub struct TrackEndReceiver(
-    pub Arc<Mutex<Option<iced::futures::channel::mpsc::UnboundedReceiver<()>>>>,
-);
+pub struct TrackEndReceiver(pub Arc<async_channel::Receiver<()>>);
 
-pub type TrackEndSender = mpsc::UnboundedSender<()>;
+pub type TrackEndSender = async_channel::Sender<()>;
 
 impl hash::Hash for TrackEndReceiver {
     fn hash<Hasher: hash::Hasher>(&self, state: &mut Hasher) {

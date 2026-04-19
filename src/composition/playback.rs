@@ -9,6 +9,7 @@ use {
         track_read,
         view_helper,
     },
+    async_channel::Receiver,
     iced::{
         Alignment,
         Border,
@@ -87,7 +88,7 @@ impl Composition for Playback {
         let sender = queue.track_end_sender();
         let audio_player = AudioPlayer::new(
             Arc::new(move || {
-                sender.unbounded_send(()).ok();
+                sender.try_send(()).ok();
             }),
             VOLUME_DEFAULT,
         );
@@ -112,7 +113,7 @@ impl Composition for Playback {
             time::every(SEEKBAR_TICK_INTERVAL).map(|_| Message::SliderSeekbarTick);
         let track_end_subscription =
             Subscription::run_with(self.queue.track_end_receiver(), |receiver| {
-                receiver.0.lock().unwrap().take().unwrap()
+                Receiver::clone(&receiver.0)
             })
             .map(|_| Message::ButtonNextPress);
         Subscription::batch([

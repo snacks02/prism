@@ -4,6 +4,7 @@ name = "prism"
 version = "0.1.0"
 
 [dependencies]
+async-channel = "2.5"
 fastrand = "2.4"
 iced = { features = ["image", "smol", "svg"], git = "https://github.com/iced-rs/iced" }
 image = "0.25"

@@ -3184,6 +3184,7 @@ dependencies = [
 name = "prism"
 version = "0.1.0"
 dependencies = [
+ "async-channel",
  "fastrand",
  "iced",
  "image",

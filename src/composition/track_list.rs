@@ -189,16 +189,6 @@ impl Composition for TrackList {
                 self.search_query = search_query;
                 Event::None
             }
-            Message::TrackActivateNext => match track_next(&self.tracks, self.active.as_ref()) {
-                None => Event::None,
-                Some(track) => self.track_activate(track),
-            },
-            Message::TrackActivatePrevious => {
-                match track_previous(&self.tracks, self.active.as_ref()) {
-                    None => Event::None,
-                    Some(track) => self.track_activate(track),
-                }
-            }
             Message::TrackListExtend(tracks) => {
                 let opened_paths: HashSet<&PathBuf> =
                     self.tracks.iter().map(|track| &track.path).collect();
@@ -208,6 +198,11 @@ impl Composition for TrackList {
                     .map(Arc::new)
                     .collect();
                 self.tracks.extend(new_tracks);
+                Event::None
+            }
+            Message::TrackPlay(track) => {
+                self.active = Some(Arc::clone(&track));
+                self.selected = Some(track);
                 Event::None
             }
             Message::TrackPress(track) => self.track_activate(track),
@@ -253,7 +248,7 @@ impl TrackList {
     fn track_activate(&mut self, track: Arc<Track>) -> Event {
         self.active = Some(Arc::clone(&track));
         self.selected = Some(Arc::clone(&track));
-        Event::TrackActivate(Track::clone(&track))
+        Event::QueueSet(track, self.tracks.clone())
     }
 
     fn tracks(&self) -> Element<'_, Message> {
@@ -355,8 +350,8 @@ impl TrackList {
 
 pub enum Event {
     None,
+    QueueSet(Arc<Track>, Vec<Arc<Track>>),
     TaskPerform(Task<Message>),
-    TrackActivate(Track),
 }
 
 #[derive(Clone, Debug)]
@@ -368,9 +363,8 @@ pub enum Message {
     KeyboardKeyEnterPress,
     PathPick(Option<PathBuf>),
     SearchTextInput(String),
-    TrackActivateNext,
-    TrackActivatePrevious,
     TrackListExtend(Vec<Track>),
+    TrackPlay(Arc<Track>),
     TrackPress(Arc<Track>),
 }
 

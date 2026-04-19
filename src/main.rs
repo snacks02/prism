@@ -1,6 +1,7 @@
 mod audio_player;
 mod composition;
 mod icon;
+mod queue;
 mod style;
 mod track;
 mod track_read;
@@ -64,20 +65,17 @@ impl Composition for Prism {
                     Task::none()
                 }
                 playback::Event::None => Task::none(),
-                playback::Event::TaskPerform(task) => task.map(Message::Playback),
-                playback::Event::TrackActivateNext => {
-                    Task::done(Message::TrackList(track_list::Message::TrackActivateNext))
-                }
-                playback::Event::TrackActivatePrevious => Task::done(Message::TrackList(
-                    track_list::Message::TrackActivatePrevious,
-                )),
+                playback::Event::TrackPlay(task, track) => Task::batch([
+                    task.map(Message::Playback),
+                    Task::done(Message::TrackList(track_list::Message::TrackPlay(track))),
+                ]),
             },
             Message::TrackList(message) => match self.track_list.update(message) {
                 track_list::Event::None => Task::none(),
+                track_list::Event::QueueSet(track, tracks) => Task::done(Message::Playback(
+                    playback::Message::QueueSet(track, tracks),
+                )),
                 track_list::Event::TaskPerform(task) => task.map(Message::TrackList),
-                track_list::Event::TrackActivate(track) => {
-                    Task::done(Message::Playback(playback::Message::TrackPlay(track)))
-                }
             },
         }
     }

@@ -3,6 +3,7 @@ use {
         audio_player::AudioPlayer,
         composition::Composition,
         icon,
+        queue::Queue,
         style,
         track::Track,
         track_read,
@@ -20,8 +21,6 @@ use {
         Task,
         event,
         event::Status,
-        futures::channel::mpsc,
-        futures::channel::mpsc::UnboundedReceiver,
         keyboard::{
             Event::KeyPressed,
             Key,
@@ -45,14 +44,8 @@ use {
             },
         },
     },
-    std::{
-        hash,
-        sync::{
-            Arc,
-            Mutex,
-        },
-        time::Duration,
-    },
+    std::sync::Arc,
+    std::time::Duration,
 };
 
 const BUTTON_SIZE: u32 = 40;
@@ -90,19 +83,20 @@ fn duration_text<'a>(seconds: f32) -> Text<'a> {
 
 impl Composition for Playback {
     fn new() -> Self {
-        let (track_end_sender, track_end_receiver) = mpsc::unbounded();
+        let queue = Queue::default();
+        let sender = queue.track_end_sender();
         let audio_player = AudioPlayer::new(
             Arc::new(move || {
-                track_end_sender.unbounded_send(()).ok();
+                sender.unbounded_send(()).ok();
             }),
             VOLUME_DEFAULT,
         );
         Self {
             audio_player,
             cover_allocation: None,
+            queue,
             seekbar_position: None,
             track: None,
-            track_end_receiver: TrackEndReceiver(Arc::new(Mutex::new(Some(track_end_receiver)))),
         }
     }
 
@@ -117,7 +111,7 @@ impl Composition for Playback {
         let slider_seekbar_subscription =
             time::every(SEEKBAR_TICK_INTERVAL).map(|_| Message::SliderSeekbarTick);
         let track_end_subscription =
-            Subscription::run_with(self.track_end_receiver.clone(), |receiver| {
+            Subscription::run_with(self.queue.track_end_receiver(), |receiver| {
                 receiver.0.lock().unwrap().take().unwrap()
             })
             .map(|_| Message::ButtonNextPress);
@@ -131,17 +125,27 @@ impl Composition for Playback {
     fn update(&mut self, message: Message) -> Event {
         match message {
             Message::AccentColorLoad(color) => Event::AccentColorChange(color),
-            Message::ButtonNextPress => Event::TrackActivateNext,
+            Message::ButtonNextPress => {
+                let track = self.queue.next().cloned();
+                self.track_play(track)
+            }
             Message::ButtonPauseOrPlayPress => {
                 self.audio_player.pause_or_play();
                 Event::None
             }
-            Message::ButtonPreviousPress => Event::TrackActivatePrevious,
+            Message::ButtonPreviousPress => {
+                let track = self.queue.previous().cloned();
+                self.track_play(track)
+            }
             Message::CoverAllocationLoad(allocation) => {
                 self.cover_allocation = allocation;
                 Event::None
             }
             Message::None => Event::None,
+            Message::QueueSet(track, tracks) => {
+                self.queue.set(&track, tracks);
+                self.track_play(Some(track))
+            }
             Message::SliderSeekbarMouseChange(position) => {
                 self.seekbar_position = Some(position);
                 Event::None
@@ -156,28 +160,6 @@ impl Composition for Playback {
             Message::SliderVolumeChange(volume) => {
                 self.audio_player.set_volume(volume);
                 Event::None
-            }
-            Message::TrackPlay(track) => {
-                if self.audio_player.play(&track).is_err() {
-                    return Event::None;
-                }
-                let cover_task = match track_read::cover_from_file(&track.path) {
-                    None => {
-                        self.cover_allocation = None;
-                        Task::done(Message::AccentColorLoad(style::COLOR_ACCENT))
-                    }
-                    Some(bytes) => {
-                        let cover = image::load_from_memory(&bytes).ok();
-                        let color_accent = style::accent_color(cover.as_ref());
-                        Task::batch([
-                            Task::done(Message::AccentColorLoad(color_accent)),
-                            widget::image::allocate(widget::image::Handle::from_bytes(bytes))
-                                .map(|result| Message::CoverAllocationLoad(result.ok())),
-                        ])
-                    }
-                };
-                self.track = Some(track);
-                Event::TaskPerform(cover_task)
             }
         }
     }
@@ -314,6 +296,32 @@ impl Playback {
         .into()
     }
 
+    fn track_play(&mut self, track: Option<Arc<Track>>) -> Event {
+        let Some(track) = track else {
+            return Event::None;
+        };
+        if self.audio_player.play(&track).is_err() {
+            return Event::None;
+        }
+        let cover_task = match track_read::cover_from_file(&track.path) {
+            None => {
+                self.cover_allocation = None;
+                Task::done(Message::AccentColorLoad(style::COLOR_ACCENT))
+            }
+            Some(bytes) => {
+                let cover = image::load_from_memory(&bytes).ok();
+                let color_accent = style::accent_color(cover.as_ref());
+                Task::batch([
+                    Task::done(Message::AccentColorLoad(color_accent)),
+                    widget::image::allocate(widget::image::Handle::from_bytes(bytes))
+                        .map(|result| Message::CoverAllocationLoad(result.ok())),
+                ])
+            }
+        };
+        self.track = Some(Arc::clone(&track));
+        Event::TrackPlay(cover_task, track)
+    }
+
     fn volume(&self) -> Element<'_, Message> {
         center(
             container(view_helper::slider(
@@ -329,18 +337,10 @@ impl Playback {
     }
 }
 
-impl hash::Hash for TrackEndReceiver {
-    fn hash<Hasher: hash::Hasher>(&self, state: &mut Hasher) {
-        Arc::as_ptr(&self.0).hash(state);
-    }
-}
-
 pub enum Event {
     AccentColorChange(Color),
     None,
-    TaskPerform(Task<Message>),
-    TrackActivateNext,
-    TrackActivatePrevious,
+    TrackPlay(Task<Message>, Arc<Track>),
 }
 
 #[derive(Clone, Debug)]
@@ -351,20 +351,17 @@ pub enum Message {
     ButtonPreviousPress,
     CoverAllocationLoad(Option<Allocation>),
     None,
+    QueueSet(Arc<Track>, Vec<Arc<Track>>),
     SliderSeekbarMouseChange(f32),
     SliderSeekbarMouseRelease,
     SliderSeekbarTick,
     SliderVolumeChange(f32),
-    TrackPlay(Track),
 }
 
 pub struct Playback {
     audio_player: AudioPlayer,
     cover_allocation: Option<Allocation>,
+    queue: Queue,
     seekbar_position: Option<f32>,
-    track: Option<Track>,
-    track_end_receiver: TrackEndReceiver,
+    track: Option<Arc<Track>>,
 }
-
-#[derive(Clone, Debug)]
-struct TrackEndReceiver(Arc<Mutex<Option<UnboundedReceiver<()>>>>);

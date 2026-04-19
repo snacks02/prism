@@ -6,6 +6,6 @@
     align="center"
     alt="image"
     height="1394"
-    src="https://github.com/user-attachments/assets/a8483e84-fd15-4028-8828-2e9555f39752"
+    src="https://github.com/user-attachments/assets/83f5cf79-667c-4456-bce7-4df5463ba9a3"
     width="1731"
 />

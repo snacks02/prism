@@ -89,36 +89,6 @@ fn search_text_input<'a>(value: &str) -> Element<'a, Message> {
     .into()
 }
 
-fn toolbar(track_list: &TrackList) -> Element<'_, Message> {
-    container(row![
-        search_text_input(&track_list.search_query),
-        view_helper::button(
-            style::COLOR_GRAY_3,
-            svg::Handle::from_memory(icon::FILE_PLUS),
-            BUTTON_SIZE
-        )
-        .on_press(Message::ButtonFileOpenPress),
-        view_helper::button(
-            style::COLOR_GRAY_3,
-            svg::Handle::from_memory(icon::FOLDER_PLUS),
-            BUTTON_SIZE
-        )
-        .on_press(Message::ButtonFolderOpenPress),
-    ])
-    .height(BUTTON_SIZE)
-    .style(|_theme| Style {
-        background: Some(style::COLOR_GRAY_1.into()),
-        ..Default::default()
-    })
-    .into()
-}
-
-fn track_activate(track: Arc<Track>, track_list: &mut TrackList) -> Event {
-    track_list.active = Some(Arc::clone(&track));
-    track_list.selected = Some(Arc::clone(&track));
-    Event::TrackActivate(Track::clone(&track))
-}
-
 fn track_next(tracks: &[Arc<Track>], current: Option<&Arc<Track>>) -> Option<Arc<Track>> {
     match current {
         None => tracks.first().cloned(),
@@ -160,101 +130,6 @@ fn track_text_container(value: impl Into<String>, weight: Weight) -> Element<'st
     .into()
 }
 
-fn tracks(track_list: &TrackList) -> Element<'_, Message> {
-    let header = container(row![
-        track_text_container("Title", Weight::Bold),
-        track_text_container("Artist", Weight::Bold),
-        track_text_container("Album", Weight::Bold),
-    ])
-    .style(|_theme| Style {
-        background: Some(style::COLOR_GRAY_1.into()),
-        ..Default::default()
-    });
-
-    let track_rows = visible_tracks(track_list)
-        .into_iter()
-        .enumerate()
-        .map(|(position, track)| {
-            let is_active = track_list
-                .active
-                .as_ref()
-                .is_some_and(|active| Arc::ptr_eq(active, &track));
-            let is_selected = track_list
-                .selected
-                .as_ref()
-                .is_some_and(|selected| Arc::ptr_eq(selected, &track));
-            mouse_area(
-                container(row![
-                    track_text_container(track.title_str(), Weight::Normal),
-                    track_text_container(track.artist_str(), Weight::Normal),
-                    track_text_container(track.album_str(), Weight::Normal),
-                ])
-                .style(move |theme: &Theme| Style {
-                    background: if is_active {
-                        Some(theme.palette().primary.base.color.into())
-                    } else if is_selected {
-                        Some(style::COLOR_GRAY_2.into())
-                    } else if position % 2 == 1 {
-                        Some(style::COLOR_GRAY_1.into())
-                    } else {
-                        None
-                    },
-                    ..Default::default()
-                }),
-            )
-            .on_press(Message::TrackPress(Arc::clone(&track)))
-            .into()
-        });
-
-    column![
-        header.padding(Padding::ZERO.right(SCROLLBAR_WIDTH)),
-        scrollable(column(track_rows).padding(Padding::ZERO.right(SCROLLBAR_WIDTH))).style(
-            |theme, status| scrollable::Style {
-                vertical_rail: scrollable::Rail {
-                    background: None,
-                    border: Default::default(),
-                    scroller: scrollable::Scroller {
-                        background: style::COLOR_GRAY_1.into(),
-                        border: Default::default()
-                    },
-                },
-                ..scrollable::default(theme, status)
-            }
-        ),
-    ]
-    .height(Length::Fill)
-    .into()
-}
-
-fn visible_tracks(track_list: &TrackList) -> Vec<Arc<Track>> {
-    let pattern = Pattern::parse(
-        &track_list.search_query,
-        CaseMatching::Ignore,
-        Normalization::Smart,
-    );
-    let mut matcher = Default::default();
-    let mut scored: Vec<(Arc<Track>, u32)> = track_list
-        .tracks
-        .iter()
-        .filter_map(|track| {
-            pattern
-                .score(
-                    Utf32String::from(format!(
-                        "{} {} {}",
-                        track.album_str(),
-                        track.artist_str(),
-                        track.title_str()
-                    ))
-                    .slice(..),
-                    &mut matcher,
-                )
-                .map(|score| (Arc::clone(track), score))
-        })
-        .collect();
-    scored.sort_unstable_by_key(|&(_, score)| Reverse(score));
-    scored.into_iter().map(|(track, _)| track).collect()
-}
-
 impl Composition for TrackList {
     fn new() -> Self {
         Self {
@@ -288,16 +163,16 @@ impl Composition for TrackList {
                 |handle| Message::PathPick(handle.map(|handle| handle.path().to_owned())),
             )),
             Message::KeyboardKeyArrowDownPress => {
-                self.selected = track_next(&visible_tracks(self), self.selected.as_ref());
+                self.selected = track_next(&self.visible_tracks(), self.selected.as_ref());
                 Event::None
             }
             Message::KeyboardKeyArrowUpPress => {
-                self.selected = track_previous(&visible_tracks(self), self.selected.as_ref());
+                self.selected = track_previous(&self.visible_tracks(), self.selected.as_ref());
                 Event::None
             }
             Message::KeyboardKeyEnterPress => match self.selected.clone() {
                 None => Event::None,
-                Some(track) => track_activate(track, self),
+                Some(track) => self.track_activate(track),
             },
             Message::PathPick(path) => path.map_or(Event::None, |path| {
                 Event::TaskPerform(Task::done(Message::TrackListExtend(if path.is_dir() {
@@ -312,12 +187,12 @@ impl Composition for TrackList {
             }
             Message::TrackActivateNext => match track_next(&self.tracks, self.active.as_ref()) {
                 None => Event::None,
-                Some(track) => track_activate(track, self),
+                Some(track) => self.track_activate(track),
             },
             Message::TrackActivatePrevious => {
                 match track_previous(&self.tracks, self.active.as_ref()) {
                     None => Event::None,
-                    Some(track) => track_activate(track, self),
+                    Some(track) => self.track_activate(track),
                 }
             }
             Message::TrackListExtend(tracks) => {
@@ -331,17 +206,145 @@ impl Composition for TrackList {
                 self.tracks.extend(new_tracks);
                 Event::None
             }
-            Message::TrackPress(track) => track_activate(track, self),
+            Message::TrackPress(track) => self.track_activate(track),
         }
     }
 
     fn view(&self) -> Element<'_, Message> {
-        column![toolbar(self), tracks(self)].into()
+        column![self.toolbar(), self.tracks()].into()
     }
 
     type Event = Event;
 
     type Message = Message;
+}
+
+impl TrackList {
+    fn toolbar(&self) -> Element<'_, Message> {
+        container(row![
+            search_text_input(&self.search_query),
+            view_helper::button(
+                style::COLOR_GRAY_3,
+                svg::Handle::from_memory(icon::FILE_PLUS),
+                BUTTON_SIZE
+            )
+            .on_press(Message::ButtonFileOpenPress),
+            view_helper::button(
+                style::COLOR_GRAY_3,
+                svg::Handle::from_memory(icon::FOLDER_PLUS),
+                BUTTON_SIZE
+            )
+            .on_press(Message::ButtonFolderOpenPress),
+        ])
+        .height(BUTTON_SIZE)
+        .style(|_theme| Style {
+            background: Some(style::COLOR_GRAY_1.into()),
+            ..Default::default()
+        })
+        .into()
+    }
+
+    fn track_activate(&mut self, track: Arc<Track>) -> Event {
+        self.active = Some(Arc::clone(&track));
+        self.selected = Some(Arc::clone(&track));
+        Event::TrackActivate(Track::clone(&track))
+    }
+
+    fn tracks(&self) -> Element<'_, Message> {
+        let header = container(row![
+            track_text_container("Title", Weight::Bold),
+            track_text_container("Artist", Weight::Bold),
+            track_text_container("Album", Weight::Bold),
+        ])
+        .style(|_theme| Style {
+            background: Some(style::COLOR_GRAY_1.into()),
+            ..Default::default()
+        });
+
+        let track_rows = self
+            .visible_tracks()
+            .into_iter()
+            .enumerate()
+            .map(|(position, track)| {
+                let is_active = self
+                    .active
+                    .as_ref()
+                    .is_some_and(|active| Arc::ptr_eq(active, &track));
+                let is_selected = self
+                    .selected
+                    .as_ref()
+                    .is_some_and(|selected| Arc::ptr_eq(selected, &track));
+                mouse_area(
+                    container(row![
+                        track_text_container(track.title_str(), Weight::Normal),
+                        track_text_container(track.artist_str(), Weight::Normal),
+                        track_text_container(track.album_str(), Weight::Normal),
+                    ])
+                    .style(move |theme: &Theme| Style {
+                        background: if is_active {
+                            Some(theme.palette().primary.base.color.into())
+                        } else if is_selected {
+                            Some(style::COLOR_GRAY_2.into())
+                        } else if position % 2 == 1 {
+                            Some(style::COLOR_GRAY_1.into())
+                        } else {
+                            None
+                        },
+                        ..Default::default()
+                    }),
+                )
+                .on_press(Message::TrackPress(Arc::clone(&track)))
+                .into()
+            });
+
+        column![
+            header.padding(Padding::ZERO.right(SCROLLBAR_WIDTH)),
+            scrollable(column(track_rows).padding(Padding::ZERO.right(SCROLLBAR_WIDTH))).style(
+                |theme, status| scrollable::Style {
+                    vertical_rail: scrollable::Rail {
+                        background: None,
+                        border: Default::default(),
+                        scroller: scrollable::Scroller {
+                            background: style::COLOR_GRAY_1.into(),
+                            border: Default::default()
+                        },
+                    },
+                    ..scrollable::default(theme, status)
+                }
+            ),
+        ]
+        .height(Length::Fill)
+        .into()
+    }
+
+    fn visible_tracks(&self) -> Vec<Arc<Track>> {
+        let pattern = Pattern::parse(
+            &self.search_query,
+            CaseMatching::Ignore,
+            Normalization::Smart,
+        );
+        let mut matcher = Default::default();
+        let mut scored: Vec<(Arc<Track>, u32)> = self
+            .tracks
+            .iter()
+            .filter_map(|track| {
+                pattern
+                    .score(
+                        Utf32String::from(format!(
+                            "{} {} {}",
+                            track.album_str(),
+                            track.artist_str(),
+                            track.title_str()
+                        ))
+                        .slice(..),
+                        &mut matcher,
+                    )
+                    .map(|score| (Arc::clone(track), score))
+            })
+            .collect();
+        scored.sort_unstable_by_key(|&(_, score)| Reverse(score));
+        scored.into_iter().map(|(track, _)| track).collect()
+    }
 }
 
 pub enum Event {

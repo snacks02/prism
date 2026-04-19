@@ -142,6 +142,7 @@ impl Composition for Playback {
                 self.cover_allocation = allocation;
                 Event::None
             }
+            Message::None => Event::None,
             Message::SliderSeekbarMouseDrag(position) => {
                 self.seekbar_position = Some(position);
                 Event::None
@@ -303,7 +304,7 @@ impl Playback {
             duration_text(position),
             center(view_helper::slider(
                 Message::SliderSeekbarMouseDrag,
-                Some(Message::SliderSeekbarMouseRelease),
+                Message::SliderSeekbarMouseRelease,
                 0.0..=duration,
                 SEEKBAR_STEP,
                 position,
@@ -319,7 +320,7 @@ impl Playback {
         center(
             container(view_helper::slider(
                 Message::SliderVolumeChange,
-                None,
+                Message::None,
                 0.0..=VOLUME_MAXIMUM,
                 VOLUME_STEP,
                 self.audio_player.volume(),
@@ -351,6 +352,7 @@ pub enum Message {
     ButtonPauseOrPlayPress,
     ButtonPreviousPress,
     CoverAllocationLoad(Option<widget::image::Allocation>),
+    None,
     SliderSeekbarMouseDrag(f32),
     SliderSeekbarMouseRelease,
     SliderSeekbarTick,

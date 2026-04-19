@@ -13,13 +13,14 @@ const RAIL_HEIGHT: f32 = 10.0;
 
 pub fn slider<'a, Message: 'a + Clone>(
     on_change: impl Fn(f32) -> Message + 'a,
-    on_release: Option<Message>,
+    on_release: Message,
     range: RangeInclusive<f32>,
     step: f32,
     value: f32,
 ) -> Element<'a, Message> {
-    let mut slider = widget::slider(range, value, on_change)
+    let slider = widget::slider(range, value, on_change)
         .height(RAIL_HEIGHT)
+        .on_release(on_release)
         .step(step)
         .style(|_, _| widget::slider::Style {
             handle: widget::slider::Handle {
@@ -37,10 +38,6 @@ pub fn slider<'a, Message: 'a + Clone>(
                 width: RAIL_HEIGHT,
             },
         });
-
-    if let Some(message) = on_release {
-        slider = slider.on_release(message);
-    }
 
     widget::container(slider)
         .style(|_| widget::container::Style {

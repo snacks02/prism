@@ -1,17 +1,26 @@
 use {
     crate::style,
     iced::{
+        Background,
+        Border,
         Color,
+        Element,
         widget,
         widget::{
-            Button,
+            button::Style,
             center,
             svg,
         },
     },
 };
 
-pub fn button<'a, Message: 'a>(color: Color, icon: svg::Handle, size: u32) -> Button<'a, Message> {
+pub fn button<'a, Message: 'a + Clone>(
+    background: Background,
+    color: Color,
+    icon: svg::Handle,
+    on_press: Message,
+    size: u32,
+) -> Element<'a, Message> {
     widget::button(center(
         svg(icon)
             .height(style::ICON_SIZE)
@@ -19,11 +28,16 @@ pub fn button<'a, Message: 'a>(color: Color, icon: svg::Handle, size: u32) -> Bu
             .width(style::ICON_SIZE),
     ))
     .height(size)
+    .on_press(on_press)
     .padding(0)
-    .style(|theme, status| widget::button::Style {
-        background: Some(Color::TRANSPARENT.into()),
-        border: Default::default(),
-        ..widget::button::primary(theme, status)
+    .style(move |_theme, _status| Style {
+        background: Some(background),
+        border: Border {
+            radius: f32::MAX.into(),
+            ..Default::default()
+        },
+        ..Default::default()
     })
     .width(size)
+    .into()
 }

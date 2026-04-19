@@ -216,31 +216,26 @@ impl Playback {
         center(
             row![
                 view_helper::button(
+                    Color::TRANSPARENT.into(),
                     style::COLOR_GRAY_4,
                     svg::Handle::from_memory(icon::SKIP_BACK),
-                    BUTTON_SIZE
-                )
-                .on_press(Message::ButtonPreviousPress),
+                    Message::ButtonPreviousPress,
+                    BUTTON_SIZE,
+                ),
                 view_helper::button(
+                    style::COLOR_GRAY_4.into(),
                     Color::TRANSPARENT,
                     svg::Handle::from_memory(pause_or_play_icon),
-                    BUTTON_SIZE
-                )
-                .style(|_, _| widget::button::Style {
-                    background: Some(style::COLOR_GRAY_4.into()),
-                    border: Border {
-                        radius: f32::MAX.into(),
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                })
-                .on_press(Message::ButtonPauseOrPlayPress),
+                    Message::ButtonPauseOrPlayPress,
+                    BUTTON_SIZE,
+                ),
                 view_helper::button(
+                    Color::TRANSPARENT.into(),
                     style::COLOR_GRAY_4,
                     svg::Handle::from_memory(icon::SKIP_FORWARD),
-                    BUTTON_SIZE
-                )
-                .on_press(Message::ButtonNextPress),
+                    Message::ButtonNextPress,
+                    BUTTON_SIZE,
+                ),
             ]
             .align_y(Alignment::Center),
         )

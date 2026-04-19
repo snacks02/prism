@@ -224,17 +224,19 @@ impl TrackList {
         container(row![
             search_text_input(&self.search_query),
             view_helper::button(
+                Color::TRANSPARENT.into(),
                 style::COLOR_GRAY_3,
                 svg::Handle::from_memory(icon::FILE_PLUS),
-                BUTTON_SIZE
-            )
-            .on_press(Message::ButtonFileOpenPress),
+                Message::ButtonFileOpenPress,
+                BUTTON_SIZE,
+            ),
             view_helper::button(
+                Color::TRANSPARENT.into(),
                 style::COLOR_GRAY_3,
                 svg::Handle::from_memory(icon::FOLDER_PLUS),
-                BUTTON_SIZE
-            )
-            .on_press(Message::ButtonFolderOpenPress),
+                Message::ButtonFolderOpenPress,
+                BUTTON_SIZE,
+            ),
         ])
         .height(BUTTON_SIZE)
         .style(|_theme| Style {

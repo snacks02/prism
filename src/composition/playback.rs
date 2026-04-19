@@ -137,6 +137,14 @@ impl Composition for Playback {
                 let track = self.queue.previous().cloned();
                 self.track_play(track)
             }
+            Message::ButtonRepeatPress => {
+                self.queue.toggle_repeat();
+                Event::None
+            }
+            Message::ButtonShufflePress => {
+                self.queue.toggle_shuffle();
+                Event::None
+            }
             Message::CoverAllocationLoad(allocation) => {
                 self.cover_allocation = allocation;
                 Event::None
@@ -195,8 +203,25 @@ impl Playback {
         } else {
             icon::PLAY
         };
+        let repeat_color = if self.queue.repeat() {
+            style::COLOR_GRAY_4
+        } else {
+            style::COLOR_GRAY_3
+        };
+        let shuffle_color = if self.queue.shuffle() {
+            style::COLOR_GRAY_4
+        } else {
+            style::COLOR_GRAY_3
+        };
         center(
             row![
+                view_helper::button(
+                    Color::TRANSPARENT.into(),
+                    repeat_color,
+                    svg::Handle::from_memory(icon::REPEAT),
+                    Message::ButtonRepeatPress,
+                    BUTTON_SIZE,
+                ),
                 view_helper::button(
                     Color::TRANSPARENT.into(),
                     style::COLOR_GRAY_4,
@@ -204,18 +229,26 @@ impl Playback {
                     Message::ButtonPreviousPress,
                     BUTTON_SIZE,
                 ),
-                view_helper::button(
+                container(view_helper::button(
                     style::COLOR_GRAY_4.into(),
                     Color::TRANSPARENT,
                     svg::Handle::from_memory(pause_or_play_icon),
                     Message::ButtonPauseOrPlayPress,
                     BUTTON_SIZE,
-                ),
+                ))
+                .padding(Padding::ZERO.horizontal(SEEKBAR_SPACING)),
                 view_helper::button(
                     Color::TRANSPARENT.into(),
                     style::COLOR_GRAY_4,
                     svg::Handle::from_memory(icon::SKIP_FORWARD),
                     Message::ButtonNextPress,
+                    BUTTON_SIZE,
+                ),
+                view_helper::button(
+                    Color::TRANSPARENT.into(),
+                    shuffle_color,
+                    svg::Handle::from_memory(icon::SHUFFLE),
+                    Message::ButtonShufflePress,
                     BUTTON_SIZE,
                 ),
             ]
@@ -349,6 +382,8 @@ pub enum Message {
     ButtonNextPress,
     ButtonPauseOrPlayPress,
     ButtonPreviousPress,
+    ButtonRepeatPress,
+    ButtonShufflePress,
     CoverAllocationLoad(Option<Allocation>),
     None,
     QueueSet(Arc<Track>, Vec<Arc<Track>>),

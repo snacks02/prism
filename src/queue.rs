@@ -10,11 +10,22 @@ use {
     },
 };
 
+pub struct Queue {
+    current: Option<Arc<Track>>,
+    repeat: bool,
+    shuffle: bool,
+    track_end_receiver: TrackEndReceiver,
+    track_end_sender: TrackEndSender,
+    tracks: Vec<Arc<Track>>,
+}
+
 impl Default for Queue {
     fn default() -> Self {
         let (track_end_sender, track_end_receiver) = mpsc::unbounded();
         Self {
             current: None,
+            repeat: false,
+            shuffle: false,
             track_end_receiver: TrackEndReceiver(Arc::new(Mutex::new(Some(track_end_receiver)))),
             track_end_sender,
             tracks: vec![],
@@ -24,15 +35,21 @@ impl Default for Queue {
 
 impl Queue {
     pub fn next(&mut self) -> Option<&Arc<Track>> {
-        let current = self.current.clone();
-        let next = match current.as_ref() {
+        let next = match self.current.as_ref() {
             None => self.tracks.first().cloned(),
             Some(current) => self
                 .tracks
                 .iter()
                 .skip_while(|track| !Arc::ptr_eq(*track, current))
                 .nth(1)
-                .cloned(),
+                .cloned()
+                .or_else(|| {
+                    if self.repeat {
+                        self.tracks.first().cloned()
+                    } else {
+                        None
+                    }
+                }),
         };
         if next.is_some() {
             self.current = next;
@@ -43,24 +60,55 @@ impl Queue {
     }
 
     pub fn previous(&mut self) -> Option<&Arc<Track>> {
-        let current = self.current.clone();
-        self.current = match current.as_ref() {
+        let previous = match self.current.as_ref() {
             None => self.tracks.first().cloned(),
-            Some(current) => Some(
-                self.tracks
-                    .iter()
-                    .take_while(|track| !Arc::ptr_eq(*track, current))
-                    .last()
-                    .unwrap_or(current)
-                    .clone(),
-            ),
+            Some(current) => self
+                .tracks
+                .iter()
+                .take_while(|track| !Arc::ptr_eq(*track, current))
+                .last()
+                .cloned()
+                .or_else(|| {
+                    if self.repeat {
+                        self.tracks.last().cloned()
+                    } else {
+                        None
+                    }
+                }),
         };
-        self.current.as_ref()
+        if previous.is_some() {
+            self.current = previous;
+            self.current.as_ref()
+        } else {
+            None
+        }
     }
 
-    pub fn set(&mut self, track: &Arc<Track>, tracks: Vec<Arc<Track>>) {
+    pub fn repeat(&self) -> bool {
+        self.repeat
+    }
+
+    pub fn set(&mut self, track: &Arc<Track>, mut tracks: Vec<Arc<Track>>) {
+        if self.shuffle {
+            fastrand::shuffle(&mut tracks);
+        }
         self.current = Some(Arc::clone(track));
         self.tracks = tracks;
+    }
+
+    pub fn shuffle(&self) -> bool {
+        self.shuffle
+    }
+
+    pub fn toggle_repeat(&mut self) {
+        self.repeat = !self.repeat;
+    }
+
+    pub fn toggle_shuffle(&mut self) {
+        self.shuffle = !self.shuffle;
+        if self.shuffle {
+            fastrand::shuffle(&mut self.tracks);
+        }
     }
 
     pub fn track_end_receiver(&self) -> TrackEndReceiver {
@@ -70,13 +118,6 @@ impl Queue {
     pub fn track_end_sender(&self) -> TrackEndSender {
         self.track_end_sender.clone()
     }
-}
-
-pub struct Queue {
-    current: Option<Arc<Track>>,
-    track_end_receiver: TrackEndReceiver,
-    track_end_sender: TrackEndSender,
-    tracks: Vec<Arc<Track>>,
 }
 
 #[derive(Clone, Debug)]

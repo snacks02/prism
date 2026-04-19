@@ -1,6 +1,7 @@
 use {
     crate::{
         audio_player::AudioPlayer,
+        composition::Composition,
         icon,
         style,
         track::Track,
@@ -215,8 +216,8 @@ fn volume(playback: &Playback) -> Element<'_, Message> {
     .into()
 }
 
-impl Playback {
-    pub fn new() -> Self {
+impl Composition for Playback {
+    fn new() -> Self {
         let (track_end_sender, track_end_receiver) = unbounded::<()>();
         let audio_player = AudioPlayer::new(
             Arc::new(move || {
@@ -233,7 +234,7 @@ impl Playback {
         }
     }
 
-    pub fn subscription(&self) -> Subscription<Message> {
+    fn subscription(&self) -> Subscription<Message> {
         let keyboard_subscription = event::listen_with(|event, status, _window| match event {
             Keyboard(KeyPressed {
                 key: Key::Named(Named::Space),
@@ -255,8 +256,7 @@ impl Playback {
         ])
     }
 
-    #[must_use]
-    pub fn update(&mut self, message: Message) -> Event {
+    fn update(&mut self, message: Message) -> Event {
         match message {
             Message::AccentColorLoad(color) => Event::AccentColorChange(color),
             Message::ButtonNextPress => Event::TrackActivateNext,
@@ -309,7 +309,7 @@ impl Playback {
         }
     }
 
-    pub fn view(&self) -> Element<'_, Message> {
+    fn view(&self) -> Element<'_, Message> {
         column![
             cover(self),
             volume(self),
@@ -327,6 +327,10 @@ impl Playback {
         .width(Length::Fill)
         .into()
     }
+
+    type Event = Event;
+
+    type Message = Message;
 }
 
 impl hash::Hash for TrackEndReceiver {

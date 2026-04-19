@@ -1,5 +1,6 @@
 use {
     crate::{
+        composition::Composition,
         icon,
         style,
         track::Track,
@@ -254,8 +255,8 @@ fn visible_tracks(track_list: &TrackList) -> Vec<Arc<Track>> {
     scored.into_iter().map(|(track, _)| track).collect()
 }
 
-impl TrackList {
-    pub fn new() -> Self {
+impl Composition for TrackList {
+    fn new() -> Self {
         Self {
             active: None,
             search_query: String::new(),
@@ -264,7 +265,7 @@ impl TrackList {
         }
     }
 
-    pub fn subscription(&self) -> Subscription<Message> {
+    fn subscription(&self) -> Subscription<Message> {
         event::listen_with(|event, _status, _window| match event {
             Keyboard(KeyPressed { key, .. }) => match key {
                 Key::Named(Named::ArrowDown) => Some(Message::KeyboardKeyArrowDownPress),
@@ -276,8 +277,7 @@ impl TrackList {
         })
     }
 
-    #[must_use]
-    pub fn update(&mut self, message: Message) -> Event {
+    fn update(&mut self, message: Message) -> Event {
         match message {
             Message::ButtonFileOpenPress => Event::TaskPerform(Task::perform(
                 AsyncFileDialog::new().pick_file(),
@@ -335,9 +335,13 @@ impl TrackList {
         }
     }
 
-    pub fn view(&self) -> Element<'_, Message> {
+    fn view(&self) -> Element<'_, Message> {
         column![toolbar(self), tracks(self)].into()
     }
+
+    type Event = Event;
+
+    type Message = Message;
 }
 
 pub enum Event {

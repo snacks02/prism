@@ -8,6 +8,7 @@ mod view_helper;
 
 use {
     composition::{
+        Composition,
         playback,
         track_list,
     },
@@ -38,7 +39,7 @@ fn main() -> Result {
         .run()
 }
 
-impl Prism {
+impl Composition for Prism {
     fn new() -> Self {
         Self {
             color_accent: style::COLOR_ACCENT,
@@ -52,18 +53,6 @@ impl Prism {
             self.playback.subscription().map(Message::Playback),
             self.track_list.subscription().map(Message::TrackList),
         ])
-    }
-
-    fn theme(&self) -> Theme {
-        Theme::custom(
-            String::from("Prism"),
-            theme::palette::Seed {
-                background: style::COLOR_BACKGROUND,
-                primary: self.color_accent,
-                text: style::COLOR_GRAY_4,
-                ..theme::palette::Seed::DARK
-            },
-        )
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
@@ -100,6 +89,23 @@ impl Prism {
         .height(Length::Fill)
         .width(Length::Fill)
         .into()
+    }
+
+    type Event = Task<Message>;
+    type Message = Message;
+}
+
+impl Prism {
+    fn theme(&self) -> Theme {
+        Theme::custom(
+            String::from("Prism"),
+            theme::palette::Seed {
+                background: style::COLOR_BACKGROUND,
+                primary: self.color_accent,
+                text: style::COLOR_GRAY_4,
+                ..theme::palette::Seed::DARK
+            },
+        )
     }
 }
 

@@ -170,33 +170,10 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
         ..Default::default()
     });
 
-    let mut scored: Vec<(Arc<Track>, u32)> = track_list
-        .tracks
-        .iter()
-        .filter_map(|track| {
-            Pattern::parse(
-                &track_list.search_query,
-                CaseMatching::Ignore,
-                Normalization::Smart,
-            )
-            .score(
-                Utf32String::from(format!(
-                    "{} {} {}",
-                    track.album_str(),
-                    track.artist_str(),
-                    track.title_str()
-                ))
-                .slice(..),
-                &mut Default::default(),
-            )
-            .map(|score| (Arc::clone(track), score))
-        })
-        .collect();
-    scored.sort_unstable_by_key(|&(_, score)| Reverse(score));
-    let track_rows = scored
+    let track_rows = visible_tracks(track_list)
         .into_iter()
         .enumerate()
-        .map(|(position, (track, _score))| {
+        .map(|(position, track)| {
             let is_active = track_list
                 .active
                 .as_ref()
@@ -248,6 +225,33 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
     .into()
 }
 
+fn visible_tracks(track_list: &TrackList) -> Vec<Arc<Track>> {
+    let mut scored: Vec<(Arc<Track>, u32)> = track_list
+        .tracks
+        .iter()
+        .filter_map(|track| {
+            Pattern::parse(
+                &track_list.search_query,
+                CaseMatching::Ignore,
+                Normalization::Smart,
+            )
+            .score(
+                Utf32String::from(format!(
+                    "{} {} {}",
+                    track.album_str(),
+                    track.artist_str(),
+                    track.title_str()
+                ))
+                .slice(..),
+                &mut Default::default(),
+            )
+            .map(|score| (Arc::clone(track), score))
+        })
+        .collect();
+    scored.sort_unstable_by_key(|&(_, score)| Reverse(score));
+    scored.into_iter().map(|(track, _)| track).collect()
+}
+
 impl TrackList {
     pub fn new() -> Self {
         Self {
@@ -282,11 +286,11 @@ impl TrackList {
                 |handle| Message::PathPick(handle.map(|handle| handle.path().to_owned())),
             )),
             Message::KeyboardKeyArrowDownPress => {
-                self.selected = track_next(&self.tracks, self.selected.as_ref());
+                self.selected = track_next(&visible_tracks(self), self.selected.as_ref());
                 Event::None
             }
             Message::KeyboardKeyArrowUpPress => {
-                self.selected = track_previous(&self.tracks, self.selected.as_ref());
+                self.selected = track_previous(&visible_tracks(self), self.selected.as_ref());
                 Event::None
             }
             Message::KeyboardKeyEnterPress => match self.selected.clone() {

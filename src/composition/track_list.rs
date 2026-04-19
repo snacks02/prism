@@ -33,6 +33,10 @@ use {
             mouse_area,
             row,
             scrollable,
+            scrollable::{
+                Rail,
+                Scroller,
+            },
             svg,
             text,
             text::{
@@ -303,10 +307,10 @@ impl TrackList {
             header.padding(Padding::ZERO.right(SCROLLBAR_WIDTH)),
             scrollable(column(track_rows).padding(Padding::ZERO.right(SCROLLBAR_WIDTH))).style(
                 |theme, status| scrollable::Style {
-                    vertical_rail: scrollable::Rail {
+                    vertical_rail: Rail {
                         background: None,
                         border: Default::default(),
-                        scroller: scrollable::Scroller {
+                        scroller: Scroller {
                             background: style::COLOR_GRAY_1.into(),
                             border: Default::default()
                         },

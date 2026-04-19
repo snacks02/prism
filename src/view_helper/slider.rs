@@ -5,6 +5,14 @@ use {
         Color,
         Element,
         widget,
+        widget::{
+            container,
+            slider::{
+                Handle,
+                HandleShape,
+                Rail,
+            },
+        },
     },
     std::ops::RangeInclusive,
 };
@@ -18,35 +26,35 @@ pub fn slider<'a, Message: 'a + Clone>(
     step: f32,
     value: f32,
 ) -> Element<'a, Message> {
-    let slider = widget::slider(range, value, on_change)
-        .height(RAIL_HEIGHT)
-        .on_release(on_release)
-        .step(step)
-        .style(|_, _| widget::slider::Style {
-            handle: widget::slider::Handle {
-                background: Color::TRANSPARENT.into(),
-                border_color: Color::TRANSPARENT,
-                border_width: 0.0,
-                shape: widget::slider::HandleShape::Circle { radius: 0.0 },
-            },
-            rail: widget::slider::Rail {
-                backgrounds: (style::COLOR_GRAY_4.into(), Color::TRANSPARENT.into()),
-                border: Border {
-                    radius: RAIL_HEIGHT.into(),
-                    ..Default::default()
+    container(
+        widget::slider(range, value, on_change)
+            .height(RAIL_HEIGHT)
+            .on_release(on_release)
+            .step(step)
+            .style(|_theme, _status| widget::slider::Style {
+                handle: Handle {
+                    background: Color::TRANSPARENT.into(),
+                    border_color: Color::TRANSPARENT,
+                    border_width: 0.0,
+                    shape: HandleShape::Circle { radius: 0.0 },
                 },
-                width: RAIL_HEIGHT,
-            },
-        });
-
-    widget::container(slider)
-        .style(|_| widget::container::Style {
-            background: Some(style::COLOR_GRAY_2.into()),
-            border: Border {
-                radius: f32::MAX.into(),
-                ..Default::default()
-            },
+                rail: Rail {
+                    backgrounds: (style::COLOR_GRAY_4.into(), Color::TRANSPARENT.into()),
+                    border: Border {
+                        radius: RAIL_HEIGHT.into(),
+                        ..Default::default()
+                    },
+                    width: RAIL_HEIGHT,
+                },
+            }),
+    )
+    .style(|_| container::Style {
+        background: Some(style::COLOR_GRAY_2.into()),
+        border: Border {
+            radius: f32::MAX.into(),
             ..Default::default()
-        })
-        .into()
+        },
+        ..Default::default()
+    })
+    .into()
 }

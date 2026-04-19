@@ -17,10 +17,11 @@ use {
         Element,
         Length,
         Result,
+        Settings,
         Subscription,
         Task,
         Theme,
-        theme,
+        theme::palette::Seed,
         widget::column,
     },
 };
@@ -29,7 +30,7 @@ const DEFAULT_TEXT_SIZE: f32 = 14.0;
 
 fn main() -> Result {
     iced::application(Prism::new, Prism::update, Prism::view)
-        .settings(iced::Settings {
+        .settings(Settings {
             default_text_size: DEFAULT_TEXT_SIZE.into(),
             ..Default::default()
         })
@@ -99,11 +100,11 @@ impl Prism {
     fn theme(&self) -> Theme {
         Theme::custom(
             String::from("Prism"),
-            theme::palette::Seed {
+            Seed {
                 background: style::COLOR_BACKGROUND,
                 primary: self.color_accent,
                 text: style::COLOR_GRAY_4,
-                ..theme::palette::Seed::DARK
+                ..Seed::DARK
             },
         )
     }

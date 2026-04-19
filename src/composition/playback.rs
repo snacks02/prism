@@ -20,10 +20,8 @@ use {
         Task,
         event,
         event::Status,
-        futures::channel::mpsc::{
-            UnboundedReceiver,
-            unbounded,
-        },
+        futures::channel::mpsc,
+        futures::channel::mpsc::UnboundedReceiver,
         keyboard::{
             Event::KeyPressed,
             Key,
@@ -37,6 +35,7 @@ use {
             column,
             container,
             container::Style,
+            image::Allocation,
             row,
             svg,
             text,
@@ -91,7 +90,7 @@ fn duration_text<'a>(seconds: f32) -> Text<'a> {
 
 impl Composition for Playback {
     fn new() -> Self {
-        let (track_end_sender, track_end_receiver) = unbounded::<()>();
+        let (track_end_sender, track_end_receiver) = mpsc::unbounded();
         let audio_player = AudioPlayer::new(
             Arc::new(move || {
                 track_end_sender.unbounded_send(()).ok();
@@ -143,7 +142,7 @@ impl Composition for Playback {
                 Event::None
             }
             Message::None => Event::None,
-            Message::SliderSeekbarMouseDrag(position) => {
+            Message::SliderSeekbarMouseChange(position) => {
                 self.seekbar_position = Some(position);
                 Event::None
             }
@@ -294,8 +293,7 @@ impl Playback {
         let duration = self
             .track
             .as_ref()
-            .and_then(|track| track.duration)
-            .map(|duration| duration.as_secs_f32())
+            .map(|track| track.duration_seconds())
             .unwrap_or(0.0);
         let position = self
             .seekbar_position
@@ -303,7 +301,7 @@ impl Playback {
         row![
             duration_text(position),
             center(view_helper::slider(
-                Message::SliderSeekbarMouseDrag,
+                Message::SliderSeekbarMouseChange,
                 Message::SliderSeekbarMouseRelease,
                 0.0..=duration,
                 SEEKBAR_STEP,
@@ -351,9 +349,9 @@ pub enum Message {
     ButtonNextPress,
     ButtonPauseOrPlayPress,
     ButtonPreviousPress,
-    CoverAllocationLoad(Option<widget::image::Allocation>),
+    CoverAllocationLoad(Option<Allocation>),
     None,
-    SliderSeekbarMouseDrag(f32),
+    SliderSeekbarMouseChange(f32),
     SliderSeekbarMouseRelease,
     SliderSeekbarTick,
     SliderVolumeChange(f32),
@@ -362,7 +360,7 @@ pub enum Message {
 
 pub struct Playback {
     audio_player: AudioPlayer,
-    cover_allocation: Option<widget::image::Allocation>,
+    cover_allocation: Option<Allocation>,
     seekbar_position: Option<f32>,
     track: Option<Track>,
     track_end_receiver: TrackEndReceiver,

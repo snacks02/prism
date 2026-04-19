@@ -96,7 +96,7 @@ pub fn from_file(path: &Path) -> Option<Track> {
             Some(StandardTagKey::Album) => album = Some(tag.value.to_string()),
             Some(StandardTagKey::Artist) => artist = Some(tag.value.to_string()),
             Some(StandardTagKey::ReplayGainTrackGain) => {
-                if let Ok(value) = tag.value.to_string().trim_end_matches(" dB").parse::<f32>() {
+                if let Ok(value) = tag.value.to_string().trim_end_matches(" dB").parse() {
                     replay_gain = Some(value);
                 }
             }

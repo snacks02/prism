@@ -1,12 +1,3 @@
-mod audio_player;
-mod composition;
-mod icon;
-mod queue;
-mod style;
-mod track;
-mod track_read;
-mod view_helper;
-
 use {
     composition::{
         Composition,
@@ -26,6 +17,15 @@ use {
         widget::column,
     },
 };
+
+mod audio_player;
+mod composition;
+mod icon;
+mod queue;
+mod style;
+mod track;
+mod track_read;
+mod view_helper;
 
 const DEFAULT_TEXT_SIZE: f32 = 14.0;
 
@@ -91,6 +91,7 @@ impl Composition for Prism {
     }
 
     type Event = Task<Message>;
+
     type Message = Message;
 }
 

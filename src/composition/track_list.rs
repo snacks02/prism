@@ -226,26 +226,28 @@ fn tracks(track_list: &TrackList) -> Element<'_, Message> {
 }
 
 fn visible_tracks(track_list: &TrackList) -> Vec<Arc<Track>> {
+    let pattern = Pattern::parse(
+        &track_list.search_query,
+        CaseMatching::Ignore,
+        Normalization::Smart,
+    );
+    let mut matcher = Default::default();
     let mut scored: Vec<(Arc<Track>, u32)> = track_list
         .tracks
         .iter()
         .filter_map(|track| {
-            Pattern::parse(
-                &track_list.search_query,
-                CaseMatching::Ignore,
-                Normalization::Smart,
-            )
-            .score(
-                Utf32String::from(format!(
-                    "{} {} {}",
-                    track.album_str(),
-                    track.artist_str(),
-                    track.title_str()
-                ))
-                .slice(..),
-                &mut Default::default(),
-            )
-            .map(|score| (Arc::clone(track), score))
+            pattern
+                .score(
+                    Utf32String::from(format!(
+                        "{} {} {}",
+                        track.album_str(),
+                        track.artist_str(),
+                        track.title_str()
+                    ))
+                    .slice(..),
+                    &mut matcher,
+                )
+                .map(|score| (Arc::clone(track), score))
         })
         .collect();
     scored.sort_unstable_by_key(|&(_, score)| Reverse(score));

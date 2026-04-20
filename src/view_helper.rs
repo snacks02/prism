@@ -1,5 +1,7 @@
-pub use button::button;
-pub use slider::slider;
+pub use {
+    button::button,
+    slider::slider,
+};
 
 mod button;
 mod slider;

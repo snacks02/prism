@@ -92,15 +92,16 @@ pub fn from_file(path: &Path) -> Option<Track> {
     let mut title = None;
 
     for tag in format_tags.iter().chain(probe_tags.iter()) {
+        let value = tag.value.to_string();
         match tag.std_key {
-            Some(StandardTagKey::Album) => album = Some(tag.value.to_string()),
-            Some(StandardTagKey::Artist) => artist = Some(tag.value.to_string()),
+            Some(StandardTagKey::Album) => album = Some(value),
+            Some(StandardTagKey::Artist) => artist = Some(value),
             Some(StandardTagKey::ReplayGainTrackGain) => {
-                if let Ok(value) = tag.value.to_string().trim_end_matches(" dB").parse() {
-                    replay_gain = Some(value);
+                if let Ok(parsed_value) = value.trim_end_matches(" dB").parse() {
+                    replay_gain = Some(parsed_value);
                 }
             }
-            Some(StandardTagKey::TrackTitle) => title = Some(tag.value.to_string()),
+            Some(StandardTagKey::TrackTitle) => title = Some(value),
             _ => {}
         }
     }

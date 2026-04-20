@@ -5,7 +5,7 @@ fn set_clones_with_shuffle() {
     let mut queue = Queue::default();
     queue.toggle_shuffle();
     let tracks = helper::new_tracks();
-    queue.set(&tracks[0], Arc::clone(&tracks));
+    queue.set(&tracks[0], tracks.clone());
     assert!(!Arc::ptr_eq(&queue.tracks, &tracks));
 }
 
@@ -13,7 +13,7 @@ fn set_clones_with_shuffle() {
 fn set_does_not_clone_without_shuffle() {
     let mut queue = Queue::default();
     let tracks = helper::new_tracks();
-    queue.set(&tracks[0], Arc::clone(&tracks));
+    queue.set(&tracks[0], tracks.clone());
     assert!(Arc::ptr_eq(&queue.tracks, &tracks));
 }
 

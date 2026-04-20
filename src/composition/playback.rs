@@ -352,7 +352,7 @@ impl Playback {
                 ])
             }
         };
-        self.track = Some(Arc::clone(&track));
+        self.track = Some(track.clone());
         Event::TrackPlay(cover_task, track)
     }
 

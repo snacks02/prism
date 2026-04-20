@@ -6,15 +6,6 @@ use {
     },
 };
 
-pub struct Queue {
-    current: Option<Arc<Track>>,
-    repeat: bool,
-    shuffle: bool,
-    track_end_receiver: TrackEndReceiver,
-    track_end_sender: TrackEndSender,
-    tracks: Arc<Vec<Arc<Track>>>,
-}
-
 impl Default for Queue {
     fn default() -> Self {
         let (track_end_sender, track_end_receiver) = async_channel::unbounded();
@@ -32,52 +23,42 @@ impl Default for Queue {
 impl Queue {
     pub fn next(&mut self) -> Option<&Arc<Track>> {
         let next = match self.current.as_ref() {
-            None => self.tracks.first().cloned(),
+            None => self.tracks.first(),
             Some(current) => self
                 .tracks
                 .iter()
                 .skip_while(|track| !Arc::ptr_eq(*track, current))
                 .nth(1)
-                .cloned()
                 .or_else(|| {
                     if self.repeat {
-                        self.tracks.first().cloned()
+                        self.tracks.first()
                     } else {
                         None
                     }
                 }),
         };
-        if next.is_some() {
-            self.current = next;
-            self.current.as_ref()
-        } else {
-            None
-        }
+        self.current = Some(next?.clone());
+        self.current.as_ref()
     }
 
     pub fn previous(&mut self) -> Option<&Arc<Track>> {
         let previous = match self.current.as_ref() {
-            None => self.tracks.first().cloned(),
+            None => self.tracks.first(),
             Some(current) => self
                 .tracks
                 .iter()
                 .take_while(|track| !Arc::ptr_eq(*track, current))
                 .last()
-                .cloned()
                 .or_else(|| {
                     if self.repeat {
-                        self.tracks.last().cloned()
+                        self.tracks.last()
                     } else {
                         None
                     }
                 }),
         };
-        if previous.is_some() {
-            self.current = previous;
-            self.current.as_ref()
-        } else {
-            None
-        }
+        self.current = Some(previous?.clone());
+        self.current.as_ref()
     }
 
     pub fn repeat(&self) -> bool {
@@ -85,7 +66,7 @@ impl Queue {
     }
 
     pub fn set(&mut self, track: &Arc<Track>, tracks: Arc<Vec<Arc<Track>>>) {
-        self.current = Some(Arc::clone(track));
+        self.current = Some(track.clone());
         if self.shuffle {
             let mut tracks = Arc::unwrap_or_clone(tracks);
             fastrand::shuffle(&mut tracks);
@@ -119,11 +100,6 @@ impl Queue {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct TrackEndReceiver(pub Arc<async_channel::Receiver<()>>);
-
-pub type TrackEndSender = async_channel::Sender<()>;
-
 impl hash::Hash for TrackEndReceiver {
     fn hash<Hasher: hash::Hasher>(&self, state: &mut Hasher) {
         Arc::as_ptr(&self.0).hash(state);
@@ -132,4 +108,19 @@ impl hash::Hash for TrackEndReceiver {
 
 #[cfg(test)]
 #[path = "queue_test.rs"]
-mod tests;
+mod test;
+
+#[derive(Clone, Debug)]
+pub struct Queue {
+    current: Option<Arc<Track>>,
+    repeat: bool,
+    shuffle: bool,
+    track_end_receiver: TrackEndReceiver,
+    track_end_sender: TrackEndSender,
+    tracks: Arc<Vec<Arc<Track>>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct TrackEndReceiver(pub Arc<async_channel::Receiver<()>>);
+
+pub type TrackEndSender = async_channel::Sender<()>;

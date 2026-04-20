@@ -45,7 +45,7 @@ impl AudioPlayer {
     pub fn play(&mut self, track: &Track) -> Result<(), Box<dyn Error>> {
         let file = File::open(&track.path)?;
         let decoder = Decoder::try_from(file)?;
-        let on_track_end = Arc::clone(&self.on_track_end);
+        let on_track_end = self.on_track_end.clone();
         let player = Player::connect_new(self.mixer_device_sink.mixer());
         player.set_volume(self.volume);
         player.append(decoder.amplify_decibel(track.replay_gain_f32()));

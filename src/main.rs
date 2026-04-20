@@ -98,7 +98,7 @@ impl Composition for Prism {
 impl Prism {
     fn theme(&self) -> Theme {
         Theme::custom(
-            String::from("Prism"),
+            "Prism".to_string(),
             Seed {
                 background: style::COLOR_BACKGROUND,
                 primary: self.color_accent,

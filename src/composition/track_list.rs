@@ -174,9 +174,9 @@ impl Composition for TrackList {
                 self.selected = track_previous(&self.visible_tracks(), self.selected.as_ref());
                 Event::None
             }
-            Message::KeyboardKeyEnterPress => match self.selected.clone() {
+            Message::KeyboardKeyEnterPress => match self.selected.as_ref() {
                 None => Event::None,
-                Some(track) => self.track_activate(track),
+                Some(track) => self.track_activate(track.clone()),
             },
             Message::PathPick(path) => path.map_or(Event::None, |path| {
                 Event::TaskPerform(Task::done(Message::TrackListExtend(if path.is_dir() {
@@ -201,7 +201,7 @@ impl Composition for TrackList {
                 Event::None
             }
             Message::TrackPlay(track) => {
-                self.active = Some(Arc::clone(&track));
+                self.active = Some(track.clone());
                 self.selected = Some(track);
                 Event::None
             }
@@ -246,8 +246,8 @@ impl TrackList {
     }
 
     fn track_activate(&mut self, track: Arc<Track>) -> Event {
-        self.active = Some(Arc::clone(&track));
-        self.selected = Some(Arc::clone(&track));
+        self.active = Some(track.clone());
+        self.selected = Some(track.clone());
         Event::QueueSet(track, self.tracks.clone())
     }
 
@@ -294,7 +294,7 @@ impl TrackList {
                         ..Default::default()
                     }),
                 )
-                .on_press(Message::TrackPress(Arc::clone(&track)))
+                .on_press(Message::TrackPress(track.clone()))
                 .into()
             });
 
@@ -340,7 +340,7 @@ impl TrackList {
                         .slice(..),
                         &mut matcher,
                     )
-                    .map(|score| (Arc::clone(track), score))
+                    .map(|score| (track.clone(), score))
             })
             .collect();
         scored.sort_unstable_by_key(|&(_, score)| Reverse(score));

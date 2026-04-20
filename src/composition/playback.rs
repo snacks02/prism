@@ -159,11 +159,11 @@ impl Composition for Playback {
                 self.queue.set_current(&track);
                 self.track_play(Some(track))
             }
-            Message::SliderSeekbarMouseChange(position) => {
+            Message::SliderSeekbarChange(position) => {
                 self.seekbar_position = Some(position);
                 Event::None
             }
-            Message::SliderSeekbarMouseRelease => {
+            Message::SliderSeekbarRelease => {
                 if let Some(position) = self.seekbar_position.take() {
                     self.audio_player.try_seek(position);
                 }
@@ -321,8 +321,8 @@ impl Playback {
         row![
             duration_text(position),
             center(view_helper::slider(
-                Message::SliderSeekbarMouseChange,
-                Message::SliderSeekbarMouseRelease,
+                Message::SliderSeekbarChange,
+                Message::SliderSeekbarRelease,
                 0.0..=duration,
                 SEEKBAR_STEP,
                 position,
@@ -342,19 +342,17 @@ impl Playback {
             return Event::None;
         }
         let cover_task = match track_read::cover_from_file(&track.path) {
-            None => {
-                self.cover_allocation = None;
-                Task::done(Message::AccentColorLoad(style::COLOR_ACCENT))
-            }
-            Some(bytes) => {
-                let cover = image::load_from_memory(&bytes).ok();
-                let color_accent = style::accent_color(cover.as_ref());
-                Task::batch([
-                    Task::done(Message::AccentColorLoad(color_accent)),
-                    widget::image::allocate(widget::image::Handle::from_bytes(bytes))
-                        .map(|result| Message::CoverAllocationLoad(result.ok())),
-                ])
-            }
+            None => Task::batch([
+                Task::done(Message::AccentColorLoad(style::COLOR_ACCENT)),
+                Task::done(Message::CoverAllocationLoad(None)),
+            ]),
+            Some(bytes) => Task::batch([
+                Task::done(Message::AccentColorLoad(style::color_accent(
+                    image::load_from_memory(&bytes).ok().as_ref(),
+                ))),
+                widget::image::allocate(widget::image::Handle::from_bytes(bytes))
+                    .map(|result| Message::CoverAllocationLoad(result.ok())),
+            ]),
         };
         self.track = Some(track.clone());
         Event::TrackPlay(cover_task, track)
@@ -393,8 +391,8 @@ pub enum Message {
     None,
     QueueExtend(Vec<Arc<Track>>),
     QueueSetCurrent(Arc<Track>),
-    SliderSeekbarMouseChange(f32),
-    SliderSeekbarMouseRelease,
+    SliderSeekbarChange(f32),
+    SliderSeekbarRelease,
     SliderSeekbarTick,
     SliderVolumeChange(f32),
 }

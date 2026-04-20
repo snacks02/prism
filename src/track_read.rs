@@ -123,3 +123,11 @@ pub fn from_file(path: &Path) -> Option<Track> {
         title,
     })
 }
+
+pub fn from_path(path: &Path) -> Vec<Track> {
+    if path.is_dir() {
+        from_directory(path)
+    } else {
+        from_file(path).into_iter().collect()
+    }
+}

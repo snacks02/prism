@@ -68,31 +68,6 @@ const PADDING_HORIZONTAL: u32 = 10;
 const ROW_HEIGHT: u32 = 36;
 const SCROLLBAR_WIDTH: f32 = 10.0;
 
-fn search_text_input<'a>(value: &str) -> Element<'a, Message> {
-    row![
-        center(
-            svg(svg::Handle::from_memory(icon::SEARCH))
-                .height(style::ICON_SIZE)
-                .style(|_theme, _status| svg::Style {
-                    color: Some(style::COLOR_GRAY_3)
-                })
-                .width(style::ICON_SIZE),
-        )
-        .height(Length::Fill)
-        .width(BUTTON_SIZE),
-        text_input("Search", value)
-            .on_input(Message::SearchTextInput)
-            .style(|theme, status| text_input::Style {
-                background: Color::TRANSPARENT.into(),
-                border: Default::default(),
-                placeholder: style::COLOR_GRAY_3,
-                ..text_input::default(theme, status)
-            }),
-    ]
-    .align_y(Alignment::Center)
-    .into()
-}
-
 fn track_next(tracks: &[Arc<Track>], current: Option<&Arc<Track>>) -> Option<Arc<Track>> {
     match current {
         None => tracks.first().cloned(),
@@ -140,7 +115,7 @@ impl Composition for TrackList {
             current: None,
             search_query: String::new(),
             selected: None,
-            tracks: Arc::new(vec![]),
+            tracks: vec![],
         }
     }
 
@@ -160,11 +135,19 @@ impl Composition for TrackList {
         match message {
             Message::ButtonFileOpenPress => Event::TaskPerform(Task::perform(
                 AsyncFileDialog::new().pick_file(),
-                |handle| Message::PathPick(handle.map(|handle| handle.path().to_owned())),
+                |handle| {
+                    Message::TracksExtend(
+                        handle.map_or(vec![], |handle| track_read::from_path(handle.path())),
+                    )
+                },
             )),
             Message::ButtonFolderOpenPress => Event::TaskPerform(Task::perform(
                 AsyncFileDialog::new().pick_folder(),
-                |handle| Message::PathPick(handle.map(|handle| handle.path().to_owned())),
+                |handle| {
+                    Message::TracksExtend(
+                        handle.map_or(vec![], |handle| track_read::from_path(handle.path())),
+                    )
+                },
             )),
             Message::KeyboardKeyArrowDownPress => {
                 self.selected = track_next(&self.visible_tracks(), self.selected.as_ref());
@@ -174,38 +157,36 @@ impl Composition for TrackList {
                 self.selected = track_previous(&self.visible_tracks(), self.selected.as_ref());
                 Event::None
             }
-            Message::KeyboardKeyEnterPress => match self.selected.as_ref() {
-                None => Event::None,
-                Some(track) => self.track_set_current(track.clone()),
-            },
-            Message::PathPick(path) => path.map_or(Event::None, |path| {
-                Event::TaskPerform(Task::done(Message::TrackListExtend(if path.is_dir() {
-                    track_read::from_directory(&path)
-                } else {
-                    track_read::from_file(&path).into_iter().collect()
-                })))
+            Message::KeyboardKeyEnterPress => self.selected.clone().map_or(Event::None, |track| {
+                self.current = Some(track.clone());
+                self.selected = Some(track.clone());
+                Event::QueueSetCurrent(track)
             }),
             Message::SearchTextInput(search_query) => {
                 self.search_query = search_query;
                 Event::None
-            }
-            Message::TrackListExtend(tracks) => {
-                let opened_paths: HashSet<&PathBuf> =
-                    self.tracks.iter().map(|track| &track.path).collect();
-                let new_tracks: Vec<Arc<Track>> = tracks
-                    .into_iter()
-                    .filter(|track| !opened_paths.contains(&track.path))
-                    .map(Arc::new)
-                    .collect();
-                Arc::make_mut(&mut self.tracks).extend(new_tracks.clone());
-                Event::QueueExtend(new_tracks)
             }
             Message::TrackPlay(track) => {
                 self.current = Some(track.clone());
                 self.selected = Some(track);
                 Event::None
             }
-            Message::TrackPress(track) => self.track_set_current(track),
+            Message::TrackPress(track) => {
+                self.current = Some(track.clone());
+                self.selected = Some(track.clone());
+                Event::QueueSetCurrent(track)
+            }
+            Message::TracksExtend(tracks) => {
+                let paths: HashSet<&PathBuf> =
+                    self.tracks.iter().map(|track| &track.path).collect();
+                let new_tracks: Vec<Arc<Track>> = tracks
+                    .into_iter()
+                    .filter(|track| !paths.contains(&track.path))
+                    .map(Arc::new)
+                    .collect();
+                self.tracks.extend(new_tracks.clone());
+                Event::QueueExtend(new_tracks)
+            }
         }
     }
 
@@ -220,35 +201,51 @@ impl Composition for TrackList {
 
 impl TrackList {
     fn toolbar(&self) -> Element<'_, Message> {
-        container(row![
-            search_text_input(&self.search_query),
-            view_helper::button(
-                Color::TRANSPARENT.into(),
-                style::COLOR_GRAY_3,
-                svg::Handle::from_memory(icon::FILE_PLUS),
-                Message::ButtonFileOpenPress,
-                BUTTON_SIZE,
-            ),
-            view_helper::button(
-                Color::TRANSPARENT.into(),
-                style::COLOR_GRAY_3,
-                svg::Handle::from_memory(icon::FOLDER_PLUS),
-                Message::ButtonFolderOpenPress,
-                BUTTON_SIZE,
-            ),
-        ])
-        .height(BUTTON_SIZE)
-        .style(|_theme| Style {
-            background: Some(style::COLOR_GRAY_1.into()),
-            ..Default::default()
-        })
-        .into()
-    }
+        let button_file_open = view_helper::button(
+            Color::TRANSPARENT.into(),
+            style::COLOR_GRAY_3,
+            svg::Handle::from_memory(icon::FILE_PLUS),
+            Message::ButtonFileOpenPress,
+            BUTTON_SIZE,
+        );
 
-    fn track_set_current(&mut self, track: Arc<Track>) -> Event {
-        self.current = Some(track.clone());
-        self.selected = Some(track.clone());
-        Event::QueueSetCurrent(track)
+        let button_folder_open = view_helper::button(
+            Color::TRANSPARENT.into(),
+            style::COLOR_GRAY_3,
+            svg::Handle::from_memory(icon::FOLDER_PLUS),
+            Message::ButtonFolderOpenPress,
+            BUTTON_SIZE,
+        );
+
+        let row_search = row![
+            center(
+                svg(svg::Handle::from_memory(icon::SEARCH))
+                    .height(style::ICON_SIZE)
+                    .style(|_theme, _status| svg::Style {
+                        color: Some(style::COLOR_GRAY_3)
+                    })
+                    .width(style::ICON_SIZE),
+            )
+            .height(Length::Fill)
+            .width(BUTTON_SIZE),
+            text_input("Search", &self.search_query)
+                .on_input(Message::SearchTextInput)
+                .style(|theme, status| text_input::Style {
+                    background: Color::TRANSPARENT.into(),
+                    border: Default::default(),
+                    placeholder: style::COLOR_GRAY_3,
+                    ..text_input::default(theme, status)
+                }),
+        ]
+        .align_y(Alignment::Center);
+
+        container(row![row_search, button_file_open, button_folder_open])
+            .height(BUTTON_SIZE)
+            .style(|_theme| Style {
+                background: Some(style::COLOR_GRAY_1.into()),
+                ..Default::default()
+            })
+            .into()
     }
 
     fn tracks(&self) -> Element<'_, Message> {
@@ -257,65 +254,64 @@ impl TrackList {
             track_text_container("Artist", Weight::Bold),
             track_text_container("Album", Weight::Bold),
         ])
+        .padding(Padding::ZERO.right(SCROLLBAR_WIDTH))
         .style(|_theme| Style {
             background: Some(style::COLOR_GRAY_1.into()),
             ..Default::default()
         });
 
-        let track_rows = self
-            .visible_tracks()
-            .into_iter()
-            .enumerate()
-            .map(|(position, track)| {
-                let is_current = self
-                    .current
-                    .as_ref()
-                    .is_some_and(|current| Arc::ptr_eq(current, &track));
-                let is_selected = self
-                    .selected
-                    .as_ref()
-                    .is_some_and(|selected| Arc::ptr_eq(selected, &track));
-                mouse_area(
-                    container(row![
-                        track_text_container(track.title_str(), Weight::Normal),
-                        track_text_container(track.artist_str(), Weight::Normal),
-                        track_text_container(track.album_str(), Weight::Normal),
-                    ])
-                    .style(move |theme: &Theme| Style {
-                        background: if is_current {
-                            Some(theme.palette().primary.base.color.into())
-                        } else if is_selected {
-                            Some(style::COLOR_GRAY_2.into())
-                        } else if position % 2 == 1 {
-                            Some(style::COLOR_GRAY_1.into())
-                        } else {
-                            None
-                        },
-                        ..Default::default()
+        let rows = scrollable(
+            column(
+                self.visible_tracks()
+                    .into_iter()
+                    .enumerate()
+                    .map(|(position, track)| {
+                        let current = self
+                            .current
+                            .as_ref()
+                            .is_some_and(|current_track| Arc::ptr_eq(current_track, &track));
+                        let selected = self
+                            .selected
+                            .as_ref()
+                            .is_some_and(|selected_track| Arc::ptr_eq(selected_track, &track));
+                        mouse_area(
+                            container(row![
+                                track_text_container(track.title_str(), Weight::Normal),
+                                track_text_container(track.artist_str(), Weight::Normal),
+                                track_text_container(track.album_str(), Weight::Normal),
+                            ])
+                            .style(move |theme: &Theme| Style {
+                                background: if current {
+                                    Some(theme.palette().primary.base.color.into())
+                                } else if selected {
+                                    Some(style::COLOR_GRAY_2.into())
+                                } else if position % 2 == 1 {
+                                    Some(style::COLOR_GRAY_1.into())
+                                } else {
+                                    None
+                                },
+                                ..Default::default()
+                            }),
+                        )
+                        .on_press(Message::TrackPress(track.clone()))
+                        .into()
                     }),
-                )
-                .on_press(Message::TrackPress(track.clone()))
-                .into()
-            });
+            )
+            .padding(Padding::ZERO.right(SCROLLBAR_WIDTH)),
+        )
+        .style(|theme, status| scrollable::Style {
+            vertical_rail: Rail {
+                background: None,
+                border: Default::default(),
+                scroller: Scroller {
+                    background: style::COLOR_GRAY_1.into(),
+                    border: Default::default(),
+                },
+            },
+            ..scrollable::default(theme, status)
+        });
 
-        column![
-            header.padding(Padding::ZERO.right(SCROLLBAR_WIDTH)),
-            scrollable(column(track_rows).padding(Padding::ZERO.right(SCROLLBAR_WIDTH))).style(
-                |theme, status| scrollable::Style {
-                    vertical_rail: Rail {
-                        background: None,
-                        border: Default::default(),
-                        scroller: Scroller {
-                            background: style::COLOR_GRAY_1.into(),
-                            border: Default::default()
-                        },
-                    },
-                    ..scrollable::default(theme, status)
-                }
-            ),
-        ]
-        .height(Length::Fill)
-        .into()
+        column![header, rows].height(Length::Fill).into()
     }
 
     fn visible_tracks(&self) -> Vec<Arc<Track>> {
@@ -362,16 +358,15 @@ pub enum Message {
     KeyboardKeyArrowDownPress,
     KeyboardKeyArrowUpPress,
     KeyboardKeyEnterPress,
-    PathPick(Option<PathBuf>),
     SearchTextInput(String),
-    TrackListExtend(Vec<Track>),
     TrackPlay(Arc<Track>),
     TrackPress(Arc<Track>),
+    TracksExtend(Vec<Track>),
 }
 
 pub struct TrackList {
     current: Option<Arc<Track>>,
     search_query: String,
     selected: Option<Arc<Track>>,
-    tracks: Arc<Vec<Arc<Track>>>,
+    tracks: Vec<Arc<Track>>,
 }

@@ -3,7 +3,7 @@ use {
     image::DynamicImage,
 };
 
-fn color_from_image(image: &DynamicImage) -> Color {
+fn color_from_dynamic_image(image: &DynamicImage) -> Color {
     let (mut red, mut green, mut blue, mut weight) = (0u64, 0u64, 0u64, 0u64);
     for pixel in image.to_rgb8().pixels() {
         let [pixel_red, pixel_green, pixel_blue] = pixel.0;
@@ -30,6 +30,6 @@ pub const COLOR_GRAY_3: Color = Color::from_rgb8(108, 108, 108);
 pub const COLOR_GRAY_4: Color = Color::from_rgb8(216, 216, 216);
 pub const ICON_SIZE: u32 = 18;
 
-pub fn accent_color(cover: Option<&image::DynamicImage>) -> Color {
-    cover.map(color_from_image).unwrap_or(COLOR_ACCENT)
+pub fn color_accent(cover: Option<&image::DynamicImage>) -> Color {
+    cover.map(color_from_dynamic_image).unwrap_or(COLOR_ACCENT)
 }

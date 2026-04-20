@@ -1,5 +1,9 @@
 use {
     crate::track::Track,
+    async_channel::{
+        Receiver,
+        Sender,
+    },
     std::{
         hash,
         sync::Arc,
@@ -15,19 +19,16 @@ impl Default for Queue {
             shuffle: false,
             track_end_receiver: TrackEndReceiver(Arc::new(track_end_receiver)),
             track_end_sender,
-            tracks: Arc::new(vec![]),
+            tracks: vec![],
         }
     }
 }
 
 impl Queue {
     pub fn extend(&mut self, tracks: Vec<Arc<Track>>) {
+        self.tracks.extend(tracks);
         if self.shuffle {
-            let queued = Arc::make_mut(&mut self.tracks);
-            queued.extend(tracks);
-            fastrand::shuffle(queued);
-        } else {
-            Arc::make_mut(&mut self.tracks).extend(tracks);
+            fastrand::shuffle(&mut self.tracks);
         }
     }
 
@@ -91,7 +92,7 @@ impl Queue {
     pub fn toggle_shuffle(&mut self) {
         self.shuffle = !self.shuffle;
         if self.shuffle {
-            fastrand::shuffle(Arc::make_mut(&mut self.tracks).as_mut_slice());
+            fastrand::shuffle(self.tracks.as_mut_slice());
         }
     }
 
@@ -117,10 +118,10 @@ pub struct Queue {
     shuffle: bool,
     track_end_receiver: TrackEndReceiver,
     track_end_sender: TrackEndSender,
-    tracks: Arc<Vec<Arc<Track>>>,
+    tracks: Vec<Arc<Track>>,
 }
 
 #[derive(Clone, Debug)]
-pub struct TrackEndReceiver(pub Arc<async_channel::Receiver<()>>);
+pub struct TrackEndReceiver(pub Arc<Receiver<()>>);
 
-pub type TrackEndSender = async_channel::Sender<()>;
+pub type TrackEndSender = Sender<()>;

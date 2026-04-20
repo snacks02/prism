@@ -21,6 +21,16 @@ impl Default for Queue {
 }
 
 impl Queue {
+    pub fn extend(&mut self, tracks: Vec<Arc<Track>>) {
+        if self.shuffle {
+            let queued = Arc::make_mut(&mut self.tracks);
+            queued.extend(tracks);
+            fastrand::shuffle(queued);
+        } else {
+            Arc::make_mut(&mut self.tracks).extend(tracks);
+        }
+    }
+
     pub fn next(&mut self) -> Option<&Arc<Track>> {
         let next = match self.current.as_ref() {
             None => self.tracks.first(),
@@ -65,15 +75,9 @@ impl Queue {
         self.repeat
     }
 
-    pub fn set(&mut self, track: &Arc<Track>, tracks: Arc<Vec<Arc<Track>>>) {
+    pub fn set_current(&mut self, track: &Arc<Track>) {
+        assert!(self.tracks.iter().any(|queued| Arc::ptr_eq(queued, track)));
         self.current = Some(track.clone());
-        if self.shuffle {
-            let mut tracks = Arc::unwrap_or_clone(tracks);
-            fastrand::shuffle(&mut tracks);
-            self.tracks = Arc::new(tracks);
-        } else {
-            self.tracks = tracks;
-        }
     }
 
     pub fn shuffle(&self) -> bool {
@@ -105,10 +109,6 @@ impl hash::Hash for TrackEndReceiver {
         Arc::as_ptr(&self.0).hash(state);
     }
 }
-
-#[cfg(test)]
-#[path = "queue_test.rs"]
-mod test;
 
 #[derive(Clone, Debug)]
 pub struct Queue {

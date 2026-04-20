@@ -72,9 +72,12 @@ impl Composition for Prism {
             },
             Message::TrackList(message) => match self.track_list.update(message) {
                 track_list::Event::None => Task::none(),
-                track_list::Event::QueueSet(track, tracks) => Task::done(Message::Playback(
-                    playback::Message::QueueSet(track, tracks),
-                )),
+                track_list::Event::QueueExtend(tracks) => {
+                    Task::done(Message::Playback(playback::Message::QueueExtend(tracks)))
+                }
+                track_list::Event::QueueSetCurrent(track) => {
+                    Task::done(Message::Playback(playback::Message::QueueSetCurrent(track)))
+                }
                 track_list::Event::TaskPerform(task) => task.map(Message::TrackList),
             },
         }

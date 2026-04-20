@@ -137,7 +137,7 @@ fn track_text_container(value: impl Into<String>, weight: Weight) -> Element<'st
 impl Composition for TrackList {
     fn new() -> Self {
         Self {
-            active: None,
+            current: None,
             search_query: String::new(),
             selected: None,
             tracks: Arc::new(vec![]),
@@ -176,7 +176,7 @@ impl Composition for TrackList {
             }
             Message::KeyboardKeyEnterPress => match self.selected.as_ref() {
                 None => Event::None,
-                Some(track) => self.track_activate(track.clone()),
+                Some(track) => self.track_set_current(track.clone()),
             },
             Message::PathPick(path) => path.map_or(Event::None, |path| {
                 Event::TaskPerform(Task::done(Message::TrackListExtend(if path.is_dir() {
@@ -197,15 +197,15 @@ impl Composition for TrackList {
                     .filter(|track| !opened_paths.contains(&track.path))
                     .map(Arc::new)
                     .collect();
-                Arc::make_mut(&mut self.tracks).extend(new_tracks);
-                Event::None
+                Arc::make_mut(&mut self.tracks).extend(new_tracks.clone());
+                Event::QueueExtend(new_tracks)
             }
             Message::TrackPlay(track) => {
-                self.active = Some(track.clone());
+                self.current = Some(track.clone());
                 self.selected = Some(track);
                 Event::None
             }
-            Message::TrackPress(track) => self.track_activate(track),
+            Message::TrackPress(track) => self.track_set_current(track),
         }
     }
 
@@ -245,10 +245,10 @@ impl TrackList {
         .into()
     }
 
-    fn track_activate(&mut self, track: Arc<Track>) -> Event {
-        self.active = Some(track.clone());
+    fn track_set_current(&mut self, track: Arc<Track>) -> Event {
+        self.current = Some(track.clone());
         self.selected = Some(track.clone());
-        Event::QueueSet(track, self.tracks.clone())
+        Event::QueueSetCurrent(track)
     }
 
     fn tracks(&self) -> Element<'_, Message> {
@@ -267,10 +267,10 @@ impl TrackList {
             .into_iter()
             .enumerate()
             .map(|(position, track)| {
-                let is_active = self
-                    .active
+                let is_current = self
+                    .current
                     .as_ref()
-                    .is_some_and(|active| Arc::ptr_eq(active, &track));
+                    .is_some_and(|current| Arc::ptr_eq(current, &track));
                 let is_selected = self
                     .selected
                     .as_ref()
@@ -282,7 +282,7 @@ impl TrackList {
                         track_text_container(track.album_str(), Weight::Normal),
                     ])
                     .style(move |theme: &Theme| Style {
-                        background: if is_active {
+                        background: if is_current {
                             Some(theme.palette().primary.base.color.into())
                         } else if is_selected {
                             Some(style::COLOR_GRAY_2.into())
@@ -350,7 +350,8 @@ impl TrackList {
 
 pub enum Event {
     None,
-    QueueSet(Arc<Track>, Arc<Vec<Arc<Track>>>),
+    QueueExtend(Vec<Arc<Track>>),
+    QueueSetCurrent(Arc<Track>),
     TaskPerform(Task<Message>),
 }
 
@@ -369,7 +370,7 @@ pub enum Message {
 }
 
 pub struct TrackList {
-    active: Option<Arc<Track>>,
+    current: Option<Arc<Track>>,
     search_query: String,
     selected: Option<Arc<Track>>,
     tracks: Arc<Vec<Arc<Track>>>,

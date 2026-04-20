@@ -151,8 +151,12 @@ impl Composition for Playback {
                 Event::None
             }
             Message::None => Event::None,
-            Message::QueueSet(track, tracks) => {
-                self.queue.set(&track, tracks);
+            Message::QueueExtend(tracks) => {
+                self.queue.extend(tracks);
+                Event::None
+            }
+            Message::QueueSetCurrent(track) => {
+                self.queue.set_current(&track);
                 self.track_play(Some(track))
             }
             Message::SliderSeekbarMouseChange(position) => {
@@ -387,7 +391,8 @@ pub enum Message {
     ButtonShufflePress,
     CoverAllocationLoad(Option<Allocation>),
     None,
-    QueueSet(Arc<Track>, Arc<Vec<Arc<Track>>>),
+    QueueExtend(Vec<Arc<Track>>),
+    QueueSetCurrent(Arc<Track>),
     SliderSeekbarMouseChange(f32),
     SliderSeekbarMouseRelease,
     SliderSeekbarTick,

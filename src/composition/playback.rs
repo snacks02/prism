@@ -387,7 +387,7 @@ pub enum Message {
     ButtonShufflePress,
     CoverAllocationLoad(Option<Allocation>),
     None,
-    QueueSet(Arc<Track>, Vec<Arc<Track>>),
+    QueueSet(Arc<Track>, Arc<Vec<Arc<Track>>>),
     SliderSeekbarMouseChange(f32),
     SliderSeekbarMouseRelease,
     SliderSeekbarTick,

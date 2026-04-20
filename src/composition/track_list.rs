@@ -140,7 +140,7 @@ impl Composition for TrackList {
             active: None,
             search_query: String::new(),
             selected: None,
-            tracks: vec![],
+            tracks: Arc::new(vec![]),
         }
     }
 
@@ -197,7 +197,7 @@ impl Composition for TrackList {
                     .filter(|track| !opened_paths.contains(&track.path))
                     .map(Arc::new)
                     .collect();
-                self.tracks.extend(new_tracks);
+                Arc::make_mut(&mut self.tracks).extend(new_tracks);
                 Event::None
             }
             Message::TrackPlay(track) => {
@@ -350,7 +350,7 @@ impl TrackList {
 
 pub enum Event {
     None,
-    QueueSet(Arc<Track>, Vec<Arc<Track>>),
+    QueueSet(Arc<Track>, Arc<Vec<Arc<Track>>>),
     TaskPerform(Task<Message>),
 }
 
@@ -372,5 +372,5 @@ pub struct TrackList {
     active: Option<Arc<Track>>,
     search_query: String,
     selected: Option<Arc<Track>>,
-    tracks: Vec<Arc<Track>>,
+    tracks: Arc<Vec<Arc<Track>>>,
 }

@@ -12,7 +12,7 @@ pub struct Queue {
     shuffle: bool,
     track_end_receiver: TrackEndReceiver,
     track_end_sender: TrackEndSender,
-    tracks: Vec<Arc<Track>>,
+    tracks: Arc<Vec<Arc<Track>>>,
 }
 
 impl Default for Queue {
@@ -24,7 +24,7 @@ impl Default for Queue {
             shuffle: false,
             track_end_receiver: TrackEndReceiver(Arc::new(track_end_receiver)),
             track_end_sender,
-            tracks: vec![],
+            tracks: Arc::new(vec![]),
         }
     }
 }
@@ -84,12 +84,15 @@ impl Queue {
         self.repeat
     }
 
-    pub fn set(&mut self, track: &Arc<Track>, mut tracks: Vec<Arc<Track>>) {
-        if self.shuffle {
-            fastrand::shuffle(&mut tracks);
-        }
+    pub fn set(&mut self, track: &Arc<Track>, tracks: Arc<Vec<Arc<Track>>>) {
         self.current = Some(Arc::clone(track));
-        self.tracks = tracks;
+        if self.shuffle {
+            let mut tracks = Arc::unwrap_or_clone(tracks);
+            fastrand::shuffle(&mut tracks);
+            self.tracks = Arc::new(tracks);
+        } else {
+            self.tracks = tracks;
+        }
     }
 
     pub fn shuffle(&self) -> bool {
@@ -103,7 +106,7 @@ impl Queue {
     pub fn toggle_shuffle(&mut self) {
         self.shuffle = !self.shuffle;
         if self.shuffle {
-            fastrand::shuffle(&mut self.tracks);
+            fastrand::shuffle(Arc::make_mut(&mut self.tracks).as_mut_slice());
         }
     }
 
@@ -126,3 +129,7 @@ impl hash::Hash for TrackEndReceiver {
         Arc::as_ptr(&self.0).hash(state);
     }
 }
+
+#[cfg(test)]
+#[path = "queue_test.rs"]
+mod tests;

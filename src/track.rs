@@ -27,7 +27,7 @@ impl Track {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Track {
     pub album: Option<String>,
     pub artist: Option<String>,

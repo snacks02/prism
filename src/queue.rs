@@ -111,6 +111,10 @@ impl hash::Hash for TrackEndReceiver {
     }
 }
 
+#[cfg(test)]
+#[path = "queue_test.rs"]
+mod tests;
+
 #[derive(Clone, Debug)]
 pub struct Queue {
     current: Option<Arc<Track>>,

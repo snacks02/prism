@@ -112,6 +112,10 @@ impl List {
     }
 }
 
+#[cfg(test)]
+#[path = "list_test.rs"]
+mod tests;
+
 #[derive(Default)]
 pub struct List {
     current: Option<Arc<Track>>,

@@ -1,20 +1,17 @@
 use {
     composition::{
         Composition,
-        playback,
-        track_list,
+        main,
     },
     iced::{
         Color,
         Element,
-        Length,
         Result,
         Settings,
         Subscription,
         Task,
         Theme,
         theme::palette::Seed,
-        widget::column,
     },
 };
 
@@ -28,6 +25,11 @@ mod track;
 mod view_helper;
 
 const DEFAULT_TEXT_SIZE: f32 = 14.0;
+
+#[derive(Clone, Debug)]
+enum Message {
+    Main(main::Message),
+}
 
 fn main() -> Result {
     iced::application(Prism::new, Prism::update, Prism::view)
@@ -44,53 +46,30 @@ fn main() -> Result {
 impl Composition for Prism {
     fn new() -> Self {
         Self {
-            color_accent: style::COLOR_ACCENT,
-            playback: playback::Playback::new(),
-            track_list: track_list::TrackList::new(),
+            color_primary: style::COLOR_PRIMARY,
+            main: main::Main::new(),
         }
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        Subscription::batch([
-            self.playback.subscription().map(Message::Playback),
-            self.track_list.subscription().map(Message::TrackList),
-        ])
+        self.main.subscription().map(Message::Main)
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::Playback(message) => match self.playback.update(message) {
-                playback::Event::AccentColorChange(color) => {
-                    self.color_accent = color;
+            Message::Main(message) => match self.main.update(message) {
+                main::Event::None => Task::none(),
+                main::Event::Perform(task) => task.map(Message::Main),
+                main::Event::PrimaryColorChange(color) => {
+                    self.color_primary = color;
                     Task::none()
                 }
-                playback::Event::None => Task::none(),
-                playback::Event::TrackPlay(task, track) => Task::batch([
-                    task.map(Message::Playback),
-                    Task::done(Message::TrackList(track_list::Message::TrackPlay(track))),
-                ]),
-            },
-            Message::TrackList(message) => match self.track_list.update(message) {
-                track_list::Event::None => Task::none(),
-                track_list::Event::QueueExtend(tracks) => {
-                    Task::done(Message::Playback(playback::Message::QueueExtend(tracks)))
-                }
-                track_list::Event::QueueSetCurrent(track) => {
-                    Task::done(Message::Playback(playback::Message::QueueSetCurrent(track)))
-                }
-                track_list::Event::TaskPerform(task) => task.map(Message::TrackList),
             },
         }
     }
 
     fn view(&self) -> Element<'_, Message> {
-        column![
-            self.playback.view().map(Message::Playback),
-            self.track_list.view().map(Message::TrackList),
-        ]
-        .height(Length::Fill)
-        .width(Length::Fill)
-        .into()
+        self.main.view().map(Message::Main)
     }
 
     type Event = Task<Message>;
@@ -104,7 +83,7 @@ impl Prism {
             "Prism".to_string(),
             Seed {
                 background: style::COLOR_BACKGROUND,
-                primary: self.color_accent,
+                primary: self.color_primary,
                 text: style::COLOR_GRAY_4,
                 ..Seed::DARK
             },
@@ -112,14 +91,7 @@ impl Prism {
     }
 }
 
-#[derive(Clone, Debug)]
-pub enum Message {
-    Playback(playback::Message),
-    TrackList(track_list::Message),
-}
-
 struct Prism {
-    color_accent: Color,
-    playback: playback::Playback,
-    track_list: track_list::TrackList,
+    color_primary: Color,
+    main: main::Main,
 }

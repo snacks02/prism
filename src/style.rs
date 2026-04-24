@@ -22,14 +22,14 @@ fn color_from_dynamic_image(image: &DynamicImage) -> Color {
     )
 }
 
-pub const COLOR_ACCENT: Color = Color::from_rgb8(84, 127, 182);
 pub const COLOR_BACKGROUND: Color = Color::from_rgb8(0, 0, 0);
 pub const COLOR_GRAY_1: Color = Color::from_rgb8(18, 18, 18);
 pub const COLOR_GRAY_2: Color = Color::from_rgb8(36, 36, 36);
 pub const COLOR_GRAY_3: Color = Color::from_rgb8(108, 108, 108);
 pub const COLOR_GRAY_4: Color = Color::from_rgb8(216, 216, 216);
+pub const COLOR_PRIMARY: Color = Color::from_rgb8(84, 127, 182);
 pub const ICON_SIZE: u32 = 18;
 
-pub fn color_accent(cover: Option<&image::DynamicImage>) -> Color {
-    cover.map(color_from_dynamic_image).unwrap_or(COLOR_ACCENT)
+pub fn color_primary(cover: Option<&image::DynamicImage>) -> Color {
+    cover.map(color_from_dynamic_image).unwrap_or(COLOR_PRIMARY)
 }

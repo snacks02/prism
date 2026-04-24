@@ -192,31 +192,3 @@ mod shuffle {
         assert!(!Queue::default().shuffle());
     }
 }
-
-mod track_end_receiver {
-    use super::*;
-
-    #[test]
-    fn returns_the_track_end_receiver() {
-        let queue = Queue::default();
-        let sender = queue.track_end_sender.clone();
-        let receiver = queue.track_end_receiver();
-        sender.send_blocking(()).unwrap();
-
-        assert!(receiver.0.recv_blocking().is_ok());
-    }
-}
-
-mod track_end_sender {
-    use super::*;
-
-    #[test]
-    fn returns_the_track_end_sender() {
-        assert!(
-            Queue::default()
-                .track_end_sender()
-                .send_blocking(())
-                .is_ok()
-        );
-    }
-}

@@ -3,8 +3,7 @@ use iced::{
     Subscription,
 };
 
-pub mod playback;
-pub mod track_list;
+pub mod main;
 
 pub trait Composition {
     fn new() -> Self;

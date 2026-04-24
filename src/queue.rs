@@ -1,28 +1,7 @@
 use {
     crate::track::Track,
-    async_channel::{
-        Receiver,
-        Sender,
-    },
-    std::{
-        hash,
-        sync::Arc,
-    },
+    std::sync::Arc,
 };
-
-impl Default for Queue {
-    fn default() -> Self {
-        let (track_end_sender, track_end_receiver) = async_channel::unbounded();
-        Self {
-            current: None,
-            repeat: false,
-            shuffle: false,
-            track_end_receiver: TrackEndReceiver(Arc::new(track_end_receiver)),
-            track_end_sender,
-            tracks: vec![],
-        }
-    }
-}
 
 impl Queue {
     pub fn extend(&mut self, tracks: Vec<Arc<Track>>) {
@@ -95,37 +74,16 @@ impl Queue {
     pub fn shuffle(&self) -> bool {
         self.shuffle
     }
-
-    pub fn track_end_receiver(&self) -> TrackEndReceiver {
-        self.track_end_receiver.clone()
-    }
-
-    pub fn track_end_sender(&self) -> TrackEndSender {
-        self.track_end_sender.clone()
-    }
-}
-
-impl hash::Hash for TrackEndReceiver {
-    fn hash<Hasher: hash::Hasher>(&self, state: &mut Hasher) {
-        Arc::as_ptr(&self.0).hash(state);
-    }
 }
 
 #[cfg(test)]
 #[path = "queue_test.rs"]
 mod tests;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Queue {
     current: Option<Arc<Track>>,
     repeat: bool,
     shuffle: bool,
-    track_end_receiver: TrackEndReceiver,
-    track_end_sender: TrackEndSender,
     tracks: Vec<Arc<Track>>,
 }
-
-#[derive(Clone, Debug)]
-pub struct TrackEndReceiver(pub Arc<Receiver<()>>);
-
-pub type TrackEndSender = Sender<()>;

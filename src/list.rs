@@ -110,6 +110,10 @@ impl List {
         self.current = Some(track.clone());
         self.selected = Some(track.clone());
     }
+
+    pub fn tracks(&self) -> &[Arc<Track>] {
+        &self.tracks
+    }
 }
 
 #[cfg(test)]

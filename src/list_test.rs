@@ -196,3 +196,16 @@ mod set_current_and_selected {
         assert!(Arc::ptr_eq(list.selected.as_ref().unwrap(), &track));
     }
 }
+
+mod tracks {
+    use super::*;
+
+    #[test]
+    fn returns_the_tracks() {
+        let mut list = List::default();
+        let track = new_track("track");
+        list.tracks = vec![track.clone()];
+
+        assert_eq!(list.tracks(), &[track]);
+    }
+}

@@ -141,6 +141,31 @@ mod repeat {
     }
 }
 
+mod repeat_disable {
+    use super::*;
+
+    #[test]
+    fn disables_repeat() {
+        let mut queue = Queue::default();
+        queue.repeat = true;
+        queue.repeat_disable();
+
+        assert!(!queue.repeat);
+    }
+}
+
+mod repeat_enable {
+    use super::*;
+
+    #[test]
+    fn enables_repeat() {
+        let mut queue = Queue::default();
+        queue.repeat_enable();
+
+        assert!(queue.repeat);
+    }
+}
+
 mod set_current {
     use super::*;
 
@@ -155,40 +180,47 @@ mod set_current {
     }
 }
 
-mod set_repeat {
-    use super::*;
-
-    #[test]
-    fn updates_the_repeat_value() {
-        let mut queue = Queue::default();
-        queue.set_repeat(true);
-
-        assert!(queue.repeat);
-    }
-}
-
-mod set_shuffle {
-    use super::*;
-
-    #[test]
-    fn updates_the_shuffle_value() {
-        fastrand::seed(2);
-        let mut queue = Queue::default();
-        let track_1 = new_track("track_1");
-        let track_2 = new_track("track_2");
-        queue.tracks = vec![track_1.clone(), track_2.clone()];
-        queue.set_shuffle(true);
-
-        assert!(queue.shuffle);
-        assert_eq!(queue.tracks, &[track_2, track_1]);
-    }
-}
-
 mod shuffle {
     use super::*;
 
     #[test]
     fn returns_the_shuffle_value() {
         assert!(!Queue::default().shuffle());
+    }
+}
+
+mod shuffle_disable {
+    use super::*;
+
+    #[test]
+    fn disables_shuffle_and_updates_tracks() {
+        fastrand::seed(2);
+        let mut queue = Queue::default();
+        let track_1 = new_track("track_1");
+        let track_2 = new_track("track_2");
+        let tracks = vec![track_1.clone(), track_2.clone()];
+        queue.tracks = vec![track_1.clone(), track_2.clone()];
+        queue.shuffle_enable();
+        queue.shuffle_disable(&tracks);
+
+        assert!(!queue.shuffle);
+        assert_eq!(queue.tracks, tracks);
+    }
+}
+
+mod shuffle_enable {
+    use super::*;
+
+    #[test]
+    fn enables_shuffle_and_shuffles_tracks() {
+        fastrand::seed(2);
+        let mut queue = Queue::default();
+        let track_1 = new_track("track_1");
+        let track_2 = new_track("track_2");
+        queue.tracks = vec![track_1.clone(), track_2.clone()];
+        queue.shuffle_enable();
+
+        assert!(queue.shuffle);
+        assert_eq!(queue.tracks, &[track_2, track_1]);
     }
 }

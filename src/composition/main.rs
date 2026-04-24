@@ -189,11 +189,19 @@ impl Composition for Main {
                 })
             }
             Message::ButtonRepeatPress => {
-                self.queue.set_repeat(!self.queue.repeat());
+                if self.queue.repeat() {
+                    self.queue.repeat_disable();
+                } else {
+                    self.queue.repeat_enable();
+                }
                 Event::None
             }
             Message::ButtonShufflePress => {
-                self.queue.set_shuffle(!self.queue.shuffle());
+                if self.queue.shuffle() {
+                    self.queue.shuffle_disable(self.list.tracks());
+                } else {
+                    self.queue.shuffle_enable();
+                }
                 Event::None
             }
             Message::CoverAllocationLoad(allocation) => {

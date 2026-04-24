@@ -55,24 +55,31 @@ impl Queue {
         self.repeat
     }
 
+    pub fn repeat_disable(&mut self) {
+        self.repeat = false;
+    }
+
+    pub fn repeat_enable(&mut self) {
+        self.repeat = true;
+    }
+
     pub fn set_current(&mut self, track: &Arc<Track>) {
         assert!(self.tracks.iter().any(|queued| Arc::ptr_eq(queued, track)));
         self.current = Some(track.clone());
     }
 
-    pub fn set_repeat(&mut self, repeat: bool) {
-        self.repeat = repeat;
-    }
-
-    pub fn set_shuffle(&mut self, shuffle: bool) {
-        self.shuffle = shuffle;
-        if self.shuffle {
-            fastrand::shuffle(self.tracks.as_mut_slice());
-        }
-    }
-
     pub fn shuffle(&self) -> bool {
         self.shuffle
+    }
+
+    pub fn shuffle_disable(&mut self, tracks: &[Arc<Track>]) {
+        self.shuffle = false;
+        self.tracks = tracks.to_vec();
+    }
+
+    pub fn shuffle_enable(&mut self) {
+        self.shuffle = true;
+        fastrand::shuffle(self.tracks.as_mut_slice());
     }
 }
 

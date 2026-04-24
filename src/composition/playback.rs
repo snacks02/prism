@@ -5,8 +5,8 @@ use {
         icon,
         queue::Queue,
         style,
+        track,
         track::Track,
-        track_read,
         view_helper,
     },
     async_channel::Receiver,
@@ -139,11 +139,11 @@ impl Composition for Playback {
                 self.track_play(track)
             }
             Message::ButtonRepeatPress => {
-                self.queue.toggle_repeat();
+                self.queue.set_repeat(!self.queue.repeat());
                 Event::None
             }
             Message::ButtonShufflePress => {
-                self.queue.toggle_shuffle();
+                self.queue.set_shuffle(!self.queue.shuffle());
                 Event::None
             }
             Message::CoverAllocationLoad(allocation) => {
@@ -341,7 +341,7 @@ impl Playback {
         if self.audio_player.play(&track).is_err() {
             return Event::None;
         }
-        let cover_task = match track_read::cover_from_file(&track.path) {
+        let cover_task = match track::cover_from_file(&track.path) {
             None => Task::batch([
                 Task::done(Message::AccentColorLoad(style::COLOR_ACCENT)),
                 Task::done(Message::CoverAllocationLoad(None)),

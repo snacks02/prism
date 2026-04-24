@@ -183,14 +183,14 @@ mod selected {
     }
 }
 
-mod set_current {
+mod set_current_and_selected {
     use super::*;
 
     #[test]
     fn updates_the_current_and_the_selected_tracks() {
         let mut list = List::default();
         let track = new_track("track");
-        list.set_current(&track);
+        list.set_current_and_selected(&track);
 
         assert!(Arc::ptr_eq(list.current.as_ref().unwrap(), &track));
         assert!(Arc::ptr_eq(list.selected.as_ref().unwrap(), &track));

@@ -81,19 +81,19 @@ impl Queue {
         self.current = Some(track.clone());
     }
 
-    pub fn shuffle(&self) -> bool {
-        self.shuffle
+    pub fn set_repeat(&mut self, repeat: bool) {
+        self.repeat = repeat;
     }
 
-    pub fn toggle_repeat(&mut self) {
-        self.repeat = !self.repeat;
-    }
-
-    pub fn toggle_shuffle(&mut self) {
-        self.shuffle = !self.shuffle;
+    pub fn set_shuffle(&mut self, shuffle: bool) {
+        self.shuffle = shuffle;
         if self.shuffle {
             fastrand::shuffle(self.tracks.as_mut_slice());
         }
+    }
+
+    pub fn shuffle(&self) -> bool {
+        self.shuffle
     }
 
     pub fn track_end_receiver(&self) -> TrackEndReceiver {

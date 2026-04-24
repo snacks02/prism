@@ -4,8 +4,8 @@ use {
         icon,
         list::List,
         style,
+        track,
         track::Track,
-        track_read,
         view_helper,
     },
     iced::{
@@ -98,7 +98,7 @@ impl Composition for TrackList {
                 AsyncFileDialog::new().pick_file(),
                 |handle| {
                     Message::TracksExtend(
-                        handle.map_or(vec![], |handle| track_read::from_path(handle.path())),
+                        handle.map_or(vec![], |handle| track::from_path(handle.path())),
                     )
                 },
             )),
@@ -106,7 +106,7 @@ impl Composition for TrackList {
                 AsyncFileDialog::new().pick_folder(),
                 |handle| {
                     Message::TracksExtend(
-                        handle.map_or(vec![], |handle| track_read::from_path(handle.path())),
+                        handle.map_or(vec![], |handle| track::from_path(handle.path())),
                     )
                 },
             )),
@@ -120,7 +120,7 @@ impl Composition for TrackList {
             }
             Message::KeyboardKeyEnterPress => {
                 self.list.selected().cloned().map_or(Event::None, |track| {
-                    self.list.set_current(&track);
+                    self.list.set_current_and_selected(&track);
                     Event::QueueSetCurrent(track)
                 })
             }
@@ -129,11 +129,11 @@ impl Composition for TrackList {
                 Event::None
             }
             Message::TrackPlay(track) => {
-                self.list.set_current(&track);
+                self.list.set_current_and_selected(&track);
                 Event::None
             }
             Message::TrackPress(track) => {
-                self.list.set_current(&track);
+                self.list.set_current_and_selected(&track);
                 Event::QueueSetCurrent(track)
             }
             Message::TracksExtend(tracks) => {

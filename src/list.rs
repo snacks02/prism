@@ -106,7 +106,7 @@ impl List {
         self.selected.as_ref()
     }
 
-    pub fn set_current(&mut self, track: &Arc<Track>) {
+    pub fn set_current_and_selected(&mut self, track: &Arc<Track>) {
         self.current = Some(track.clone());
         self.selected = Some(track.clone());
     }

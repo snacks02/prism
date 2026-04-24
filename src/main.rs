@@ -25,7 +25,6 @@ mod list;
 mod queue;
 mod style;
 mod track;
-mod track_read;
 mod view_helper;
 
 const DEFAULT_TEXT_SIZE: f32 = 14.0;

@@ -21,6 +21,7 @@ use {
 mod audio_player;
 mod composition;
 mod icon;
+mod list;
 mod queue;
 mod style;
 mod track;

@@ -2,6 +2,7 @@ use {
     crate::{
         composition::Composition,
         icon,
+        list::List,
         style,
         track::Track,
         track_read,
@@ -46,51 +47,14 @@ use {
             text_input,
         },
     },
-    nucleo::{
-        Utf32String,
-        pattern::{
-            CaseMatching,
-            Normalization,
-            Pattern,
-        },
-    },
     rfd::AsyncFileDialog,
-    std::{
-        cmp::Reverse,
-        collections::HashSet,
-        path::PathBuf,
-        sync::Arc,
-    },
+    std::sync::Arc,
 };
 
 const BUTTON_SIZE: u32 = 36;
 const PADDING_HORIZONTAL: u32 = 10;
 const ROW_HEIGHT: u32 = 36;
 const SCROLLBAR_WIDTH: f32 = 10.0;
-
-fn track_next(tracks: &[Arc<Track>], current: Option<&Arc<Track>>) -> Option<Arc<Track>> {
-    match current {
-        None => tracks.first().cloned(),
-        Some(current) => tracks
-            .iter()
-            .skip_while(|track| !Arc::ptr_eq(*track, current))
-            .nth(1)
-            .or(Some(current))
-            .cloned(),
-    }
-}
-
-fn track_previous(tracks: &[Arc<Track>], current: Option<&Arc<Track>>) -> Option<Arc<Track>> {
-    match current {
-        None => tracks.first().cloned(),
-        Some(current) => tracks
-            .iter()
-            .take_while(|track| !Arc::ptr_eq(*track, current))
-            .last()
-            .or(Some(current))
-            .cloned(),
-    }
-}
 
 fn track_text_container(value: impl Into<String>, weight: Weight) -> Element<'static, Message> {
     container(
@@ -112,10 +76,7 @@ fn track_text_container(value: impl Into<String>, weight: Weight) -> Element<'st
 impl Composition for TrackList {
     fn new() -> Self {
         Self {
-            current: None,
-            search_query: String::new(),
-            selected: None,
-            tracks: vec![],
+            list: Default::default(),
         }
     }
 
@@ -150,41 +111,33 @@ impl Composition for TrackList {
                 },
             )),
             Message::KeyboardKeyArrowDownPress => {
-                self.selected = track_next(&self.visible_tracks(), self.selected.as_ref());
+                self.list.select_next();
                 Event::None
             }
             Message::KeyboardKeyArrowUpPress => {
-                self.selected = track_previous(&self.visible_tracks(), self.selected.as_ref());
+                self.list.select_previous();
                 Event::None
             }
-            Message::KeyboardKeyEnterPress => self.selected.clone().map_or(Event::None, |track| {
-                self.current = Some(track.clone());
-                self.selected = Some(track.clone());
-                Event::QueueSetCurrent(track)
-            }),
-            Message::SearchTextInput(search_query) => {
-                self.search_query = search_query;
+            Message::KeyboardKeyEnterPress => {
+                self.list.selected().cloned().map_or(Event::None, |track| {
+                    self.list.set_current(&track);
+                    Event::QueueSetCurrent(track)
+                })
+            }
+            Message::SearchTextInput(query) => {
+                self.list.search(query);
                 Event::None
             }
             Message::TrackPlay(track) => {
-                self.current = Some(track.clone());
-                self.selected = Some(track);
+                self.list.set_current(&track);
                 Event::None
             }
             Message::TrackPress(track) => {
-                self.current = Some(track.clone());
-                self.selected = Some(track.clone());
+                self.list.set_current(&track);
                 Event::QueueSetCurrent(track)
             }
             Message::TracksExtend(tracks) => {
-                let paths: HashSet<&PathBuf> =
-                    self.tracks.iter().map(|track| &track.path).collect();
-                let new_tracks: Vec<Arc<Track>> = tracks
-                    .into_iter()
-                    .filter(|track| !paths.contains(&track.path))
-                    .map(Arc::new)
-                    .collect();
-                self.tracks.extend(new_tracks.clone());
+                let new_tracks = self.list.extend(tracks.into_iter().map(Arc::new).collect());
                 Event::QueueExtend(new_tracks)
             }
         }
@@ -228,7 +181,7 @@ impl TrackList {
             )
             .height(Length::Fill)
             .width(BUTTON_SIZE),
-            text_input("Search", &self.search_query)
+            text_input("Search", self.list.search_query())
                 .on_input(Message::SearchTextInput)
                 .style(|theme, status| text_input::Style {
                     background: Color::TRANSPARENT.into(),
@@ -260,19 +213,17 @@ impl TrackList {
             ..Default::default()
         });
 
-        let rows = scrollable(
-            column(
-                self.visible_tracks()
-                    .into_iter()
-                    .enumerate()
-                    .map(|(position, track)| {
+        let rows =
+            scrollable(
+                column(self.list.matching().iter().cloned().enumerate().map(
+                    |(position, track)| {
                         let current = self
-                            .current
-                            .as_ref()
+                            .list
+                            .current()
                             .is_some_and(|current_track| Arc::ptr_eq(current_track, &track));
                         let selected = self
-                            .selected
-                            .as_ref()
+                            .list
+                            .selected()
                             .is_some_and(|selected_track| Arc::ptr_eq(selected_track, &track));
                         mouse_area(
                             container(row![
@@ -295,52 +246,23 @@ impl TrackList {
                         )
                         .on_press(Message::TrackPress(track.clone()))
                         .into()
-                    }),
+                    },
+                ))
+                .padding(Padding::ZERO.right(SCROLLBAR_WIDTH)),
             )
-            .padding(Padding::ZERO.right(SCROLLBAR_WIDTH)),
-        )
-        .style(|theme, status| scrollable::Style {
-            vertical_rail: Rail {
-                background: None,
-                border: Default::default(),
-                scroller: Scroller {
-                    background: style::COLOR_GRAY_1.into(),
+            .style(|theme, status| scrollable::Style {
+                vertical_rail: Rail {
+                    background: None,
                     border: Default::default(),
+                    scroller: Scroller {
+                        background: style::COLOR_GRAY_1.into(),
+                        border: Default::default(),
+                    },
                 },
-            },
-            ..scrollable::default(theme, status)
-        });
+                ..scrollable::default(theme, status)
+            });
 
         column![header, rows].height(Length::Fill).into()
-    }
-
-    fn visible_tracks(&self) -> Vec<Arc<Track>> {
-        let pattern = Pattern::parse(
-            &self.search_query,
-            CaseMatching::Ignore,
-            Normalization::Smart,
-        );
-        let mut matcher = Default::default();
-        let mut scored: Vec<(Arc<Track>, u32)> = self
-            .tracks
-            .iter()
-            .filter_map(|track| {
-                pattern
-                    .score(
-                        Utf32String::from(format!(
-                            "{} {} {}",
-                            track.album_str(),
-                            track.artist_str(),
-                            track.title_str()
-                        ))
-                        .slice(..),
-                        &mut matcher,
-                    )
-                    .map(|score| (track.clone(), score))
-            })
-            .collect();
-        scored.sort_unstable_by_key(|&(_, score)| Reverse(score));
-        scored.into_iter().map(|(track, _)| track).collect()
     }
 }
 
@@ -365,8 +287,5 @@ pub enum Message {
 }
 
 pub struct TrackList {
-    current: Option<Arc<Track>>,
-    search_query: String,
-    selected: Option<Arc<Track>>,
-    tracks: Vec<Arc<Track>>,
+    list: List,
 }

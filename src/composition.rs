@@ -3,8 +3,6 @@ use iced::{
     Subscription,
 };
 
-pub mod main;
-
 pub trait Composition {
     fn new() -> Self;
 

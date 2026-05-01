@@ -390,12 +390,15 @@ impl Prism {
 
     fn information(&self) -> Element<'_, Message> {
         let value = if let Some(track) = &self.track {
-            format!(
-                "{} :: {} :: {}",
-                track.title_str(),
-                track.artist_str(),
-                track.album_str()
-            )
+            [
+                track.title.as_deref(),
+                track.artist.as_deref(),
+                track.album.as_deref(),
+            ]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<&str>>()
+            .join(" :: ")
         } else {
             "Select a track".to_string()
         };

@@ -512,8 +512,8 @@ impl Prism {
             .width(TOOLBAR_HEIGHT),
             text_input("Search", self.list.search_query())
                 .on_input(Message::SearchTextInput)
+                .padding(0)
                 .style(|theme, status| text_input::Style {
-                    background: Color::TRANSPARENT.into(),
                     border: Default::default(),
                     placeholder: style::COLOR_GRAY_3,
                     ..text_input::default(theme, status)
@@ -523,10 +523,6 @@ impl Prism {
 
         container(row![search_row, file_open_button, folder_open_button])
             .height(Length::Shrink)
-            .style(|_theme| Style {
-                background: Some(style::COLOR_GRAY_1.into()),
-                ..Default::default()
-            })
             .into()
     }
 
@@ -536,11 +532,7 @@ impl Prism {
             track_text_container("Artist", Weight::Bold),
             track_text_container("Album", Weight::Bold),
         ])
-        .padding(Padding::ZERO.right(SCROLLBAR_PADDING))
-        .style(|_theme| Style {
-            background: Some(style::COLOR_GRAY_1.into()),
-            ..Default::default()
-        });
+        .padding(Padding::ZERO.right(SCROLLBAR_PADDING));
 
         let rows =
             scrollable(
@@ -565,7 +557,7 @@ impl Prism {
                                     Some(theme.palette().primary.base.color.into())
                                 } else if selected {
                                     Some(style::COLOR_GRAY_2.into())
-                                } else if position % 2 == 1 {
+                                } else if position % 2 == 0 {
                                     Some(style::COLOR_GRAY_1.into())
                                 } else {
                                     None
@@ -584,7 +576,7 @@ impl Prism {
                     background: None,
                     border: Default::default(),
                     scroller: Scroller {
-                        background: style::COLOR_GRAY_1.into(),
+                        background: style::COLOR_GRAY_2.into(),
                         border: Default::default(),
                     },
                 },

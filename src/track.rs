@@ -105,9 +105,7 @@ impl Track {
     }
 
     pub fn duration_seconds(&self) -> f32 {
-        self.duration
-            .map(|duration| duration.as_secs_f32())
-            .unwrap_or(0.0)
+        self.duration.map_or(0.0, |duration| duration.as_secs_f32())
     }
 
     pub fn replay_gain_f32(&self) -> f32 {

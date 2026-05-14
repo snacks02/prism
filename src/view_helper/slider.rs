@@ -31,7 +31,7 @@ pub fn slider<'a, Message: 'a + Clone>(
             .height(RAIL_HEIGHT)
             .on_release(on_release)
             .step(step)
-            .style(|_theme, _status| widget::slider::Style {
+            .style(|_, _| widget::slider::Style {
                 handle: Handle {
                     background: Color::TRANSPARENT.into(),
                     border_color: Color::TRANSPARENT,

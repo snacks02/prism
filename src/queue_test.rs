@@ -15,7 +15,7 @@ mod extend {
     use super::*;
 
     #[test]
-    fn adds_tracks() {
+    fn adds_the_tracks() {
         let mut queue = Queue::default();
         let track = new_track("track");
         queue.extend(vec![track.clone()]);
@@ -24,7 +24,7 @@ mod extend {
     }
 
     #[test]
-    fn shuffles_tracks_when_shuffle_is_enabled() {
+    fn shuffles_the_tracks_when_shuffle_is_enabled() {
         fastrand::seed(2);
         let mut queue = Queue::default();
         queue.shuffle = true;
@@ -50,7 +50,7 @@ mod next {
     }
 
     #[test]
-    fn returns_the_first_track_when_at_the_last_track_with_repeat() {
+    fn returns_the_first_track_when_at_the_last_track_and_repeat_is_enabled() {
         let mut queue = Queue::default();
         let track = new_track("track");
         queue.current = Some(track.clone());
@@ -108,7 +108,7 @@ mod previous {
     }
 
     #[test]
-    fn returns_the_last_track_when_at_the_first_track_with_repeat() {
+    fn returns_the_last_track_when_at_the_first_track_and_repeat_is_enabled() {
         let mut queue = Queue::default();
         let track = new_track("track");
         queue.current = Some(track.clone());
@@ -136,7 +136,7 @@ mod repeat {
     use super::*;
 
     #[test]
-    fn toggles_repeat_on() {
+    fn returns_the_repeat_value() {
         assert!(!Queue::default().repeat());
     }
 }
@@ -193,7 +193,7 @@ mod shuffle_disable {
     use super::*;
 
     #[test]
-    fn disables_shuffle_and_updates_tracks() {
+    fn disables_shuffle_and_updates_the_tracks() {
         fastrand::seed(2);
         let mut queue = Queue::default();
         let track_1 = new_track("track_1");
@@ -212,7 +212,7 @@ mod shuffle_enable {
     use super::*;
 
     #[test]
-    fn enables_shuffle_and_shuffles_tracks() {
+    fn enables_shuffle_and_shuffles_the_tracks() {
         fastrand::seed(2);
         let mut queue = Queue::default();
         let track_1 = new_track("track_1");

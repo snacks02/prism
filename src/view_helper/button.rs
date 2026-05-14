@@ -24,13 +24,13 @@ pub fn button<'a, Message: 'a + Clone>(
     widget::button(center(
         svg(icon)
             .height(style::ICON_SIZE)
-            .style(move |_theme, _status| svg::Style { color: Some(color) })
+            .style(move |_, _| svg::Style { color: Some(color) })
             .width(style::ICON_SIZE),
     ))
     .height(size)
     .on_press(on_press)
     .padding(0)
-    .style(move |_theme, _status| Style {
+    .style(move |_, _| Style {
         background: Some(background),
         border: Border {
             radius: f32::MAX.into(),

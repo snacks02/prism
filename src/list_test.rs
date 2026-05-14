@@ -28,19 +28,19 @@ mod extend {
     use super::*;
 
     #[test]
-    fn adds_and_deduplicates_tracks() {
+    fn adds_and_deduplicates_the_tracks() {
         let mut list = List::default();
         let track = new_track("track");
 
         assert_eq!(list.extend(vec![track.clone()]), &[track.clone()]);
-        assert_eq!(list.matching, &[track.clone()]);
+        assert_eq!(list.tracks, &[track.clone()]);
 
         assert_eq!(list.extend(vec![track.clone()]), &[]);
-        assert_eq!(list.matching, &[track.clone()]);
+        assert_eq!(list.tracks, &[track.clone()]);
     }
 
     #[test]
-    fn updates_matching() {
+    fn updates_the_matching_tracks() {
         let mut list = List::default();
         list.search_query = "track_1".into();
         let track_1 = new_track("track_1");
@@ -56,7 +56,7 @@ mod matching {
     use super::*;
 
     #[test]
-    fn returns_matching_tracks() {
+    fn returns_the_matching_tracks() {
         let mut list = List::default();
         let track = new_track("track");
         list.matching = vec![track.clone()];
@@ -69,7 +69,7 @@ mod search {
     use super::*;
 
     #[test]
-    fn updates_matching_and_search_query() {
+    fn updates_the_matching_tracks_and_the_search_query() {
         let mut list = List::default();
         let track_1 = new_track("track_1");
         list.tracks = vec![track_1.clone(), new_track("track_2")];
@@ -187,7 +187,7 @@ mod set_current_and_selected {
     use super::*;
 
     #[test]
-    fn updates_the_current_and_the_selected_tracks() {
+    fn updates_the_current_and_selected_track() {
         let mut list = List::default();
         let track = new_track("track");
         list.set_current_and_selected(&track);

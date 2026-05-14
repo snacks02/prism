@@ -6,7 +6,6 @@ use {
         queue::Queue,
         track::Track,
     },
-    async_channel::Receiver,
     iced::{
         Alignment,
         Border,
@@ -76,8 +75,8 @@ const COVER_BORDER_WIDTH: f32 = 4.0;
 const COVER_ICON_SIZE: u32 = 48;
 const COVER_SIZE: u32 = 200;
 const DEFAULT_TEXT_SIZE: f32 = 14.0;
-const PADDING_LARGE: f32 = SPACING_LARGE as f32;
-const PADDING_SMALL: f32 = SPACING_SMALL as f32;
+const PADDING_AND_SPACING_LARGE: u32 = 16;
+const PADDING_AND_SPACING_SMALL: u32 = 8;
 const PLAYBACK_BUTTON_SIZE: u32 = 40;
 const SCROLLBAR_PADDING: f32 = 10.0;
 const SEEKBAR_DURATION_CLAMP: f32 = SEEKBAR_DURATION_MAXIMUM - 1.0;
@@ -85,9 +84,7 @@ const SEEKBAR_DURATION_MAXIMUM: f32 = 6000.0;
 const SEEKBAR_DURATION_WIDTH: u32 = 40;
 const SEEKBAR_STEP: f32 = 0.001;
 const SEEKBAR_TICK_INTERVAL: Duration = Duration::from_millis(16);
-const SPACING_LARGE: u32 = 16;
-const SPACING_SMALL: u32 = 8;
-const TOOLBAR_HEIGHT: u32 = 36;
+const TOOLBAR_SIZE: u32 = 36;
 const TRACK_TEXT_CONTAINER_HEIGHT: u32 = 36;
 const TRACK_TEXT_CONTAINER_PADDING_HORIZONTAL: u32 = 10;
 const VOLUME_DEFAULT: f32 = VOLUME_MAXIMUM / 2.0;
@@ -171,7 +168,7 @@ impl Composition for Prism {
             time::every(SEEKBAR_TICK_INTERVAL).map(|_| Message::SliderSeekbarTick);
         let track_end_subscription =
             Subscription::run_with(self.audio_player.track_end_receiver(), |receiver| {
-                Receiver::clone(&receiver.0)
+                receiver.0.as_ref().clone()
             })
             .map(|_| Message::ButtonNextPress);
         Subscription::batch([
@@ -228,10 +225,6 @@ impl Composition for Prism {
                 } else {
                     self.queue.shuffle_enable();
                 }
-                Task::none()
-            }
-            Message::ColorPrimaryLoad(color) => {
-                self.color_primary = color;
                 Task::none()
             }
             Message::CoverAllocationLoad(allocation) => {
@@ -331,7 +324,7 @@ impl Prism {
                     Message::ButtonPauseOrPlayPress,
                     PLAYBACK_BUTTON_SIZE,
                 ))
-                .padding(Padding::ZERO.horizontal(SPACING_SMALL)),
+                .padding(Padding::ZERO.horizontal(PADDING_AND_SPACING_LARGE)),
                 view_helper::button(
                     Color::TRANSPARENT.into(),
                     style::COLOR_GRAY_4,
@@ -368,13 +361,13 @@ impl Prism {
             container(
                 svg(svg::Handle::from_memory(icon::MUSIC))
                     .height(COVER_ICON_SIZE)
-                    .style(|_theme, _status| svg::Style {
+                    .style(|_, _| svg::Style {
                         color: Some(style::COLOR_GRAY_2),
                     })
                     .width(COVER_ICON_SIZE),
             )
             .center(COVER_SIZE)
-            .style(|_theme| Style {
+            .style(|_| Style {
                 background: Some(style::COLOR_GRAY_1.into()),
                 border: Border {
                     color: style::COLOR_GRAY_2,
@@ -410,19 +403,20 @@ impl Prism {
         if self.audio_player.play(&track).is_err() {
             return Task::none();
         }
-        self.track = Some(track.clone());
-        match track::cover_from_file(&track.path) {
-            None => Task::batch([
-                Task::done(Message::ColorPrimaryLoad(style::COLOR_PRIMARY)),
-                Task::done(Message::CoverAllocationLoad(None)),
-            ]),
-            Some(bytes) => Task::batch([
-                Task::done(Message::ColorPrimaryLoad(style::color_primary(
-                    image::load_from_memory(&bytes).ok().as_ref(),
-                ))),
+        let cover = track::cover_from_file(&track.path);
+        self.track = Some(track);
+        match cover {
+            None => {
+                self.color_primary = style::COLOR_PRIMARY;
+                self.cover_allocation = None;
+                Task::none()
+            }
+            Some(bytes) => {
+                self.color_primary =
+                    style::color_primary(image::load_from_memory(&bytes).ok().as_ref());
                 widget::image::allocate(widget::image::Handle::from_bytes(bytes))
-                    .map(|result| Message::CoverAllocationLoad(result.ok())),
-            ]),
+                    .map(|result| Message::CoverAllocationLoad(result.ok()))
+            }
         }
     }
 
@@ -437,10 +431,10 @@ impl Prism {
         .height(Length::Shrink)
         .padding(
             Padding::ZERO
-                .horizontal(PADDING_SMALL)
-                .vertical(PADDING_LARGE),
+                .horizontal(PADDING_AND_SPACING_SMALL)
+                .vertical(PADDING_AND_SPACING_LARGE),
         )
-        .spacing(SPACING_LARGE)
+        .spacing(PADDING_AND_SPACING_LARGE)
         .width(Length::Fill)
         .into()
     }
@@ -449,8 +443,7 @@ impl Prism {
         let duration = self
             .track
             .as_ref()
-            .map(|track| track.duration_seconds())
-            .unwrap_or(0.0);
+            .map_or(0.0, |track| track.duration_seconds());
         let position = self
             .seekbar_position
             .unwrap_or_else(|| self.audio_player.position());
@@ -466,7 +459,7 @@ impl Prism {
             duration_text(duration),
         ]
         .align_y(Alignment::Center)
-        .spacing(SPACING_SMALL)
+        .spacing(PADDING_AND_SPACING_SMALL)
         .into()
     }
 
@@ -488,7 +481,7 @@ impl Prism {
             style::COLOR_GRAY_3,
             svg::Handle::from_memory(icon::FILE_PLUS),
             Message::ButtonFileOpenPress,
-            TOOLBAR_HEIGHT,
+            TOOLBAR_SIZE,
         );
 
         let folder_open_button = view_helper::button(
@@ -496,20 +489,20 @@ impl Prism {
             style::COLOR_GRAY_3,
             svg::Handle::from_memory(icon::FOLDER_PLUS),
             Message::ButtonFolderOpenPress,
-            TOOLBAR_HEIGHT,
+            TOOLBAR_SIZE,
         );
 
         let search_row = row![
             center(
                 svg(svg::Handle::from_memory(icon::SEARCH))
                     .height(style::ICON_SIZE)
-                    .style(|_theme, _status| svg::Style {
+                    .style(|_, _| svg::Style {
                         color: Some(style::COLOR_GRAY_3)
                     })
                     .width(style::ICON_SIZE),
             )
             .height(Length::Fill)
-            .width(TOOLBAR_HEIGHT),
+            .width(TOOLBAR_SIZE),
             text_input("Search", self.list.search_query())
                 .on_input(Message::SearchTextInput)
                 .padding(0)
@@ -610,7 +603,6 @@ pub enum Message {
     ButtonPreviousPress,
     ButtonRepeatPress,
     ButtonShufflePress,
-    ColorPrimaryLoad(Color),
     CoverAllocationLoad(Option<Allocation>),
     KeyboardKeyArrowDownPress,
     KeyboardKeyArrowUpPress,

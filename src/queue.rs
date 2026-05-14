@@ -79,7 +79,7 @@ impl Queue {
 
     pub fn shuffle_enable(&mut self) {
         self.shuffle = true;
-        fastrand::shuffle(self.tracks.as_mut_slice());
+        fastrand::shuffle(&mut self.tracks);
     }
 }
 

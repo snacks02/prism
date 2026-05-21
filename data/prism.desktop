@@ -1,0 +1,8 @@
+[Desktop Entry]
+Categories=Audio;AudioVideo;Player;
+Comment=A simple, lightweight, and shiny music player
+Exec=prism %F
+GenericName=Music player
+MimeType=audio/aac;audio/aiff;audio/flac;audio/mp4;audio/mpeg;audio/ogg;audio/wav;audio/x-aac;audio/x-aiff;audio/x-caf;audio/x-flac;audio/x-flac+ogg;audio/x-m4a;audio/x-matroska;audio/x-mpeg;audio/x-ogg;audio/x-vorbis+ogg;audio/x-wav;
+Name=Prism
+Type=Application

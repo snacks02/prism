@@ -53,14 +53,20 @@ use {
             },
             text_input,
         },
+        window,
     },
     rfd::AsyncFileDialog,
+    smol::stream,
+    smol::stream::StreamExt,
     std::{
+        env,
+        path::Path,
         sync::Arc,
         time::Duration,
     },
 };
 
+mod activation;
 mod audio_player;
 mod composition;
 mod icon;
@@ -110,15 +116,22 @@ fn duration_text<'a>(seconds: f32) -> Text<'a> {
 }
 
 fn main() -> Result {
-    iced::application(Prism::new, Prism::update, Prism::view)
-        .settings(Settings {
-            default_text_size: DEFAULT_TEXT_SIZE.into(),
-            ..Default::default()
-        })
-        .subscription(Prism::subscription)
-        .theme(Prism::theme)
-        .title("Prism")
-        .run()
+    if activation::forward() {
+        return Ok(());
+    }
+    iced::application(
+        || (Prism::new(), Task::done(Message::ButtonNextPress)),
+        Prism::update,
+        Prism::view,
+    )
+    .settings(Settings {
+        default_text_size: DEFAULT_TEXT_SIZE.into(),
+        ..Default::default()
+    })
+    .subscription(Prism::subscription)
+    .theme(Prism::theme)
+    .title("Prism")
+    .run()
 }
 
 fn track_text_container(value: impl Into<String>, weight: Weight) -> Element<'static, Message> {
@@ -140,18 +153,42 @@ fn track_text_container(value: impl Into<String>, weight: Weight) -> Element<'st
 
 impl Composition for Prism {
     fn new() -> Self {
+        let mut list = List::default();
+        let mut queue = Queue::default();
+        queue.extend(
+            list.extend(
+                env::args()
+                    .skip(1)
+                    .flat_map(|argument| track::from_path(Path::new(&argument)))
+                    .map(Arc::new)
+                    .collect(),
+            ),
+        );
         Self {
             audio_player: AudioPlayer::new(VOLUME_DEFAULT),
             color_primary: style::COLOR_PRIMARY,
             cover_allocation: None,
-            list: Default::default(),
-            queue: Default::default(),
+            list,
+            queue,
             seekbar_position: None,
             track: None,
         }
     }
 
     fn subscription(&self) -> Subscription<Message> {
+        let activation_subscription = Subscription::run(|| {
+            activation::incoming().flat_map(|paths| {
+                stream::iter([
+                    Message::ListClear,
+                    Message::ListExtend(
+                        paths
+                            .into_iter()
+                            .flat_map(|path| track::from_path(&path))
+                            .collect(),
+                    ),
+                ])
+            })
+        });
         let keyboard_subscription = event::listen_with(|event, status, _window| match event {
             Keyboard(KeyPressed { key, .. }) => match key {
                 Key::Named(Named::ArrowDown) => Some(Message::KeyboardKeyArrowDownPress),
@@ -172,6 +209,7 @@ impl Composition for Prism {
             })
             .map(|_| Message::ButtonNextPress);
         Subscription::batch([
+            activation_subscription,
             keyboard_subscription,
             seekbar_subscription,
             track_end_subscription,
@@ -246,10 +284,31 @@ impl Composition for Prism {
                     self.play(track)
                 })
             }
+            Message::ListClear => {
+                self.list = List::default();
+                self.queue = Queue::default();
+                self.track = None;
+                Task::none()
+            }
             Message::ListExtend(tracks) => {
                 let new_tracks = self.list.extend(tracks.into_iter().map(Arc::new).collect());
                 self.queue.extend(new_tracks);
-                Task::none()
+                Task::batch([
+                    window::oldest().and_then(|id| {
+                        window::request_user_attention(
+                            id,
+                            Some(window::UserAttention::Informational),
+                        )
+                    }),
+                    self.track
+                        .is_none()
+                        .then(|| self.queue.next().cloned())
+                        .flatten()
+                        .map_or(Task::none(), |track| {
+                            self.list.set_current_and_selected(&track);
+                            self.play(track)
+                        }),
+                ])
             }
             Message::ListPress(track) => {
                 self.list.set_current_and_selected(&track);
@@ -607,6 +666,7 @@ pub enum Message {
     KeyboardKeyArrowDownPress,
     KeyboardKeyArrowUpPress,
     KeyboardKeyEnterPress,
+    ListClear,
     ListExtend(Vec<Track>),
     ListPress(Arc<Track>),
     None,

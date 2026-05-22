@@ -57,7 +57,7 @@ mod next {
         queue.repeat = true;
         queue.tracks = vec![track.clone()];
 
-        assert!(Arc::ptr_eq(queue.next().unwrap(), &track));
+        assert!(Arc::ptr_eq(queue.next().as_ref().unwrap(), &track));
         assert!(Arc::ptr_eq(queue.current.as_ref().unwrap(), &track));
     }
 
@@ -67,7 +67,7 @@ mod next {
         let track = new_track("track");
         queue.tracks = vec![track.clone()];
 
-        assert!(Arc::ptr_eq(queue.next().unwrap(), &track));
+        assert!(Arc::ptr_eq(queue.next().as_ref().unwrap(), &track));
         assert!(Arc::ptr_eq(queue.current.as_ref().unwrap(), &track));
     }
 
@@ -79,7 +79,7 @@ mod next {
         queue.current = Some(track_1.clone());
         queue.tracks = vec![track_1, track_2.clone()];
 
-        assert!(Arc::ptr_eq(queue.next().unwrap(), &track_2));
+        assert!(Arc::ptr_eq(queue.next().as_ref().unwrap(), &track_2));
         assert!(Arc::ptr_eq(queue.current.as_ref().unwrap(), &track_2));
     }
 }
@@ -103,7 +103,7 @@ mod previous {
         let track = new_track("track");
         queue.tracks = vec![track.clone()];
 
-        assert!(Arc::ptr_eq(queue.previous().unwrap(), &track));
+        assert!(Arc::ptr_eq(queue.previous().as_ref().unwrap(), &track));
         assert!(Arc::ptr_eq(queue.current.as_ref().unwrap(), &track));
     }
 
@@ -115,7 +115,7 @@ mod previous {
         queue.repeat = true;
         queue.tracks = vec![track.clone()];
 
-        assert!(Arc::ptr_eq(queue.previous().unwrap(), &track));
+        assert!(Arc::ptr_eq(queue.previous().as_ref().unwrap(), &track));
         assert!(Arc::ptr_eq(queue.current.as_ref().unwrap(), &track));
     }
 
@@ -127,7 +127,7 @@ mod previous {
         queue.current = Some(track_2.clone());
         queue.tracks = vec![track_1.clone(), track_2];
 
-        assert!(Arc::ptr_eq(queue.previous().unwrap(), &track_1));
+        assert!(Arc::ptr_eq(queue.previous().as_ref().unwrap(), &track_1));
         assert!(Arc::ptr_eq(queue.current.as_ref().unwrap(), &track_1));
     }
 }

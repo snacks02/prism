@@ -54,6 +54,7 @@ use {
             text_input,
         },
         window,
+        window::UserAttention,
     },
     rfd::AsyncFileDialog,
     smol::stream,
@@ -120,7 +121,7 @@ fn main() -> Result {
         return Ok(());
     }
     iced::application(
-        || (Prism::new(), Task::done(Message::ButtonNextPress)),
+        || (Prism::new(), Task::done(Message::ListSelectNext)),
         Prism::update,
         Prism::view,
     )
@@ -134,9 +135,9 @@ fn main() -> Result {
     .run()
 }
 
-fn track_text_container(value: impl Into<String>, weight: Weight) -> Element<'static, Message> {
+fn track_text_container(value: &str, weight: Weight) -> Element<'_, Message> {
     container(
-        text(value.into())
+        text(value)
             .ellipsis(Ellipsis::End)
             .font(Font {
                 weight,
@@ -189,7 +190,7 @@ impl Composition for Prism {
                 ])
             })
         });
-        let keyboard_subscription = event::listen_with(|event, status, _window| match event {
+        let keyboard_subscription = event::listen_with(|event, status, _| match event {
             Keyboard(KeyPressed { key, .. }) => match key {
                 Key::Named(Named::ArrowDown) => Some(Message::KeyboardKeyArrowDownPress),
                 Key::Named(Named::ArrowUp) => Some(Message::KeyboardKeyArrowUpPress),
@@ -201,13 +202,12 @@ impl Composition for Prism {
             },
             _ => None,
         });
-        let seekbar_subscription =
-            time::every(SEEKBAR_TICK_INTERVAL).map(|_| Message::SliderSeekbarTick);
+        let seekbar_subscription = time::every(SEEKBAR_TICK_INTERVAL).map(|_| Message::None);
         let track_end_subscription =
             Subscription::run_with(self.audio_player.track_end_receiver(), |receiver| {
                 receiver.0.as_ref().clone()
             })
-            .map(|_| Message::ButtonNextPress);
+            .map(|_| Message::ListSelectNext);
         Subscription::batch([
             activation_subscription,
             keyboard_subscription,
@@ -221,33 +221,24 @@ impl Composition for Prism {
             Message::ButtonFileOpenPress => {
                 Task::perform(AsyncFileDialog::new().pick_file(), |handle| {
                     Message::ListExtend(
-                        handle.map_or(vec![], |handle| track::from_path(handle.path())),
+                        handle
+                            .map(|handle| track::from_path(handle.path()))
+                            .unwrap_or_default(),
                     )
                 })
             }
             Message::ButtonFolderOpenPress => {
                 Task::perform(AsyncFileDialog::new().pick_folder(), |handle| {
                     Message::ListExtend(
-                        handle.map_or(vec![], |handle| track::from_path(handle.path())),
+                        handle
+                            .map(|handle| track::from_path(handle.path()))
+                            .unwrap_or_default(),
                     )
                 })
             }
-            Message::ButtonNextPress => self.queue.next().cloned().map_or(Task::none(), |track| {
-                self.list.set_current_and_selected(&track);
-                self.play(track)
-            }),
             Message::ButtonPauseOrPlayPress => {
                 self.audio_player.pause_or_play();
                 Task::none()
-            }
-            Message::ButtonPreviousPress => {
-                self.queue
-                    .previous()
-                    .cloned()
-                    .map_or(Task::none(), |track| {
-                        self.list.set_current_and_selected(&track);
-                        self.play(track)
-                    })
             }
             Message::ButtonRepeatPress => {
                 if self.queue.repeat() {
@@ -291,18 +282,15 @@ impl Composition for Prism {
                 Task::none()
             }
             Message::ListExtend(tracks) => {
-                let new_tracks = self.list.extend(tracks.into_iter().map(Arc::new).collect());
-                self.queue.extend(new_tracks);
+                self.queue
+                    .extend(self.list.extend(tracks.into_iter().map(Arc::new).collect()));
                 Task::batch([
                     window::oldest().and_then(|id| {
-                        window::request_user_attention(
-                            id,
-                            Some(window::UserAttention::Informational),
-                        )
+                        window::request_user_attention(id, Some(UserAttention::Informational))
                     }),
                     self.track
                         .is_none()
-                        .then(|| self.queue.next().cloned())
+                        .then(|| self.queue.next())
                         .flatten()
                         .map_or(Task::none(), |track| {
                             self.list.set_current_and_selected(&track);
@@ -315,6 +303,14 @@ impl Composition for Prism {
                 self.queue.set_current(&track);
                 self.play(track)
             }
+            Message::ListSelectNext => self.queue.next().map_or(Task::none(), |track| {
+                self.list.set_current_and_selected(&track);
+                self.play(track)
+            }),
+            Message::ListSelectPrevious => self.queue.previous().map_or(Task::none(), |track| {
+                self.list.set_current_and_selected(&track);
+                self.play(track)
+            }),
             Message::None => Task::none(),
             Message::SearchTextInput(query) => {
                 self.list.search(query);
@@ -330,7 +326,6 @@ impl Composition for Prism {
                 }
                 Task::none()
             }
-            Message::SliderSeekbarTick => Task::none(),
             Message::SliderVolumeChange(volume) => {
                 self.audio_player.set_volume(volume);
                 Task::none()
@@ -369,7 +364,7 @@ impl Prism {
                     Color::TRANSPARENT.into(),
                     style::COLOR_GRAY_4,
                     svg::Handle::from_memory(icon::SKIP_BACK),
-                    Message::ButtonPreviousPress,
+                    Message::ListSelectPrevious,
                     PLAYBACK_BUTTON_SIZE,
                 ),
                 container(view_helper::button(
@@ -388,7 +383,7 @@ impl Prism {
                     Color::TRANSPARENT.into(),
                     style::COLOR_GRAY_4,
                     svg::Handle::from_memory(icon::SKIP_FORWARD),
-                    Message::ButtonNextPress,
+                    Message::ListSelectNext,
                     PLAYBACK_BUTTON_SIZE,
                 ),
                 view_helper::button(
@@ -409,7 +404,7 @@ impl Prism {
     }
 
     fn cover(&self) -> Element<'_, Message> {
-        let container = if let Some(allocation) = &self.cover_allocation {
+        center(if let Some(allocation) = &self.cover_allocation {
             container(
                 widget::image(allocation.handle().clone())
                     .border_radius(COVER_BORDER_RADIUS)
@@ -435,27 +430,29 @@ impl Prism {
                 },
                 ..Default::default()
             })
-        };
-
-        center(container).into()
+        })
+        .into()
     }
 
     fn information(&self) -> Element<'_, Message> {
-        let value = if let Some(track) = &self.track {
-            [
-                track.title.as_deref(),
-                track.artist.as_deref(),
-                track.album.as_deref(),
-            ]
-            .into_iter()
-            .flatten()
-            .collect::<Vec<&str>>()
-            .join(" :: ")
-        } else {
-            "Select a track".to_string()
-        };
-
-        center(text(value).ellipsis(Ellipsis::End).wrapping(Wrapping::None)).into()
+        center(
+            text(if let Some(track) = &self.track {
+                [
+                    track.title.as_deref(),
+                    track.artist.as_deref(),
+                    track.album.as_deref(),
+                ]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<&str>>()
+                .join(" :: ")
+            } else {
+                "Select a track".to_string()
+            })
+            .ellipsis(Ellipsis::End)
+            .wrapping(Wrapping::None),
+        )
+        .into()
     }
 
     fn play(&mut self, track: Arc<Track>) -> Task<Message> {
@@ -586,18 +583,21 @@ impl Prism {
         ])
         .padding(Padding::ZERO.right(SCROLLBAR_PADDING));
 
-        let rows =
-            scrollable(
-                column(self.list.matching().iter().cloned().enumerate().map(
-                    |(position, track)| {
+        let rows = scrollable(
+            column(
+                self.list
+                    .matching()
+                    .iter()
+                    .enumerate()
+                    .map(|(position, track)| {
                         let current = self
                             .list
                             .current()
-                            .is_some_and(|current_track| Arc::ptr_eq(current_track, &track));
+                            .is_some_and(|current_track| Arc::ptr_eq(current_track, track));
                         let selected = self
                             .list
                             .selected()
-                            .is_some_and(|selected_track| Arc::ptr_eq(selected_track, &track));
+                            .is_some_and(|selected_track| Arc::ptr_eq(selected_track, track));
                         mouse_area(
                             container(row![
                                 track_text_container(track.title_str(), Weight::Normal),
@@ -619,21 +619,21 @@ impl Prism {
                         )
                         .on_press(Message::ListPress(track.clone()))
                         .into()
-                    },
-                ))
-                .padding(Padding::ZERO.right(SCROLLBAR_PADDING)),
+                    }),
             )
-            .style(|theme, status| scrollable::Style {
-                vertical_rail: Rail {
-                    background: None,
+            .padding(Padding::ZERO.right(SCROLLBAR_PADDING)),
+        )
+        .style(|theme, status| scrollable::Style {
+            vertical_rail: Rail {
+                background: None,
+                border: Default::default(),
+                scroller: Scroller {
+                    background: style::COLOR_GRAY_2.into(),
                     border: Default::default(),
-                    scroller: Scroller {
-                        background: style::COLOR_GRAY_2.into(),
-                        border: Default::default(),
-                    },
                 },
-                ..scrollable::default(theme, status)
-            });
+            },
+            ..scrollable::default(theme, status)
+        });
 
         column![self.toolbar(), column![header, rows].height(Length::Fill)].into()
     }
@@ -657,9 +657,7 @@ impl Prism {
 pub enum Message {
     ButtonFileOpenPress,
     ButtonFolderOpenPress,
-    ButtonNextPress,
     ButtonPauseOrPlayPress,
-    ButtonPreviousPress,
     ButtonRepeatPress,
     ButtonShufflePress,
     CoverAllocationLoad(Option<Allocation>),
@@ -669,11 +667,12 @@ pub enum Message {
     ListClear,
     ListExtend(Vec<Track>),
     ListPress(Arc<Track>),
+    ListSelectNext,
+    ListSelectPrevious,
     None,
     SearchTextInput(String),
     SliderSeekbarChange(f32),
     SliderSeekbarRelease,
-    SliderSeekbarTick,
     SliderVolumeChange(f32),
 }
 

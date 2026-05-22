@@ -75,12 +75,11 @@ impl List {
     }
 
     pub fn select_next(&mut self) {
-        let index = self.selected.as_ref().and_then(|selected| {
+        self.selected = match self.selected.as_ref().and_then(|selected| {
             self.matching
                 .iter()
                 .position(|track| Arc::ptr_eq(track, selected))
-        });
-        self.selected = match index {
+        }) {
             None => self.matching.first().cloned(),
             Some(index) => self
                 .matching
@@ -91,12 +90,11 @@ impl List {
     }
 
     pub fn select_previous(&mut self) {
-        let index = self.selected.as_ref().and_then(|selected| {
+        self.selected = match self.selected.as_ref().and_then(|selected| {
             self.matching
                 .iter()
                 .position(|track| Arc::ptr_eq(track, selected))
-        });
-        self.selected = match index {
+        }) {
             None | Some(0) => self.matching.first().cloned(),
             Some(index) => self.matching.get(index - 1).cloned(),
         };

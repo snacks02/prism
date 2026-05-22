@@ -30,6 +30,6 @@ pub const COLOR_GRAY_4: Color = Color::from_rgb8(216, 216, 216);
 pub const COLOR_PRIMARY: Color = Color::from_rgb8(84, 127, 182);
 pub const ICON_SIZE: u32 = 18;
 
-pub fn color_primary(cover: Option<&image::DynamicImage>) -> Color {
+pub fn color_primary(cover: Option<&DynamicImage>) -> Color {
     cover.map_or(COLOR_PRIMARY, color_from_dynamic_image)
 }

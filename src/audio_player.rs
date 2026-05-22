@@ -1,9 +1,5 @@
 use {
     crate::track::Track,
-    async_channel::{
-        Receiver,
-        Sender,
-    },
     rodio::{
         Decoder,
         DeviceSinkBuilder,
@@ -11,6 +7,11 @@ use {
         Player,
         Source,
         source::EmptyCallback,
+    },
+    smol::channel,
+    smol::channel::{
+        Receiver,
+        Sender,
     },
     std::{
         error::Error,
@@ -27,7 +28,7 @@ impl AudioPlayer {
     }
 
     pub fn new(volume: f32) -> Self {
-        let (track_end_sender, track_end_receiver) = async_channel::unbounded::<()>();
+        let (track_end_sender, track_end_receiver) = channel::unbounded();
         let mixer_device_sink = DeviceSinkBuilder::open_default_sink().unwrap();
         let player = Player::connect_new(mixer_device_sink.mixer());
         player.set_volume(volume);
@@ -36,7 +37,6 @@ impl AudioPlayer {
             player,
             track_end_receiver: TrackEndReceiver(Arc::new(track_end_receiver)),
             track_end_sender,
-            volume,
         }
     }
 
@@ -49,8 +49,7 @@ impl AudioPlayer {
     }
 
     pub fn play(&mut self, track: &Track) -> Result<(), Box<dyn Error>> {
-        let file = File::open(&track.path)?;
-        let decoder = Decoder::try_from(file)?;
+        let decoder = Decoder::try_from(File::open(&track.path)?)?;
         let sender = self.track_end_sender.clone();
         self.player.stop();
         self.player
@@ -67,7 +66,6 @@ impl AudioPlayer {
 
     pub fn set_volume(&mut self, volume: f32) {
         self.player.set_volume(volume);
-        self.volume = volume;
     }
 
     pub fn track_end_receiver(&self) -> TrackEndReceiver {
@@ -79,7 +77,7 @@ impl AudioPlayer {
     }
 
     pub fn volume(&self) -> f32 {
-        self.volume
+        self.player.volume()
     }
 }
 
@@ -94,7 +92,6 @@ pub struct AudioPlayer {
     player: Player,
     track_end_receiver: TrackEndReceiver,
     track_end_sender: Sender<()>,
-    volume: f32,
 }
 
 #[derive(Clone, Debug)]

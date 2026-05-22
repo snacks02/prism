@@ -11,7 +11,7 @@ impl Queue {
         }
     }
 
-    pub fn next(&mut self) -> Option<&Arc<Track>> {
+    pub fn next(&mut self) -> Option<Arc<Track>> {
         let next = match self.current.as_ref() {
             None => self.tracks.first(),
             Some(current) => self
@@ -28,10 +28,10 @@ impl Queue {
                 }),
         };
         self.current = Some(next?.clone());
-        self.current.as_ref()
+        self.current.clone()
     }
 
-    pub fn previous(&mut self) -> Option<&Arc<Track>> {
+    pub fn previous(&mut self) -> Option<Arc<Track>> {
         let previous = match self.current.as_ref() {
             None => self.tracks.first(),
             Some(current) => self
@@ -48,7 +48,7 @@ impl Queue {
                 }),
         };
         self.current = Some(previous?.clone());
-        self.current.as_ref()
+        self.current.clone()
     }
 
     pub fn repeat(&self) -> bool {

@@ -1,8 +1,10 @@
 use {
     std::{
         fs::File,
-        path::Path,
-        path::PathBuf,
+        path::{
+            Path,
+            PathBuf,
+        },
         time::Duration,
     },
     symphonia::{
@@ -38,8 +40,7 @@ fn from_directory(path: &Path) -> Vec<Track> {
     WalkDir::new(path)
         .sort_by_file_name()
         .into_iter()
-        .filter_map(|entry| entry.ok())
-        .filter_map(|entry| from_file(entry.path()))
+        .filter_map(|entry| from_file(entry.ok()?.path()))
         .collect()
 }
 
@@ -50,18 +51,16 @@ fn from_file(path: &Path) -> Option<Track> {
     let mut artist = None;
     let mut replay_gain = None;
     let mut title = None;
-
     for tag in collect_tags(&mut probe_result) {
+        let Some(std_key) = tag.std_key else { continue };
         let value = tag.value.to_string();
-        match tag.std_key {
-            Some(StandardTagKey::Album) => album = Some(value),
-            Some(StandardTagKey::Artist) => artist = Some(value),
-            Some(StandardTagKey::ReplayGainTrackGain) => {
-                if let Ok(parsed_value) = value.trim_end_matches(" dB").parse() {
-                    replay_gain = Some(parsed_value);
-                }
+        match std_key {
+            StandardTagKey::Album => album = Some(value),
+            StandardTagKey::Artist => artist = Some(value),
+            StandardTagKey::ReplayGainTrackGain => {
+                replay_gain = value.trim_end_matches(" dB").parse().ok();
             }
-            Some(StandardTagKey::TrackTitle) => title = Some(value),
+            StandardTagKey::TrackTitle => title = Some(value),
             _ => {}
         }
     }
@@ -97,11 +96,11 @@ fn probe_file(path: &Path) -> Option<ProbeResult> {
 
 impl Track {
     pub fn album_str(&self) -> &str {
-        self.album.as_deref().unwrap_or("")
+        self.album.as_deref().unwrap_or_default()
     }
 
     pub fn artist_str(&self) -> &str {
-        self.artist.as_deref().unwrap_or("")
+        self.artist.as_deref().unwrap_or_default()
     }
 
     pub fn duration_seconds(&self) -> f32 {
@@ -113,7 +112,7 @@ impl Track {
     }
 
     pub fn title_str(&self) -> &str {
-        self.title.as_deref().unwrap_or("")
+        self.title.as_deref().unwrap_or_default()
     }
 }
 

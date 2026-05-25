@@ -10,69 +10,60 @@ use {
     },
     symphonia::{
         core::{
-            io::MediaSourceStream,
-            meta::{
-                StandardTagKey,
-                Tag,
+            formats::{
+                FormatReader,
+                TrackType,
+                probe::Hint,
             },
-            probe::ProbeResult,
+            io::MediaSourceStream,
+            meta::StandardTag,
+            units::Timestamp,
         },
         default,
     },
 };
 
-fn collect_tags(probe_result: &mut ProbeResult) -> Vec<Tag> {
-    let format_tags = probe_result
-        .format
-        .metadata()
-        .current()
-        .map(|revision| revision.tags().to_vec())
-        .unwrap_or_default();
-    let probe_tags = probe_result
-        .metadata
-        .get()
-        .and_then(|metadata| metadata.current().map(|revision| revision.tags().to_vec()))
-        .unwrap_or_default();
-    format_tags.into_iter().chain(probe_tags).collect()
-}
-
 fn from_directory(path: &Path) -> Vec<Track> {
     let mut paths: Vec<PathBuf> = fs::read_dir(path)
         .into_iter()
         .flatten()
-        .filter_map(|directory_entry| Some(directory_entry.ok()?.path()))
+        .filter_map(|directory_entry| {
+            directory_entry
+                .ok()
+                .map(|directory_entry| directory_entry.path())
+        })
         .collect();
     paths.sort();
     paths.iter().flat_map(|path| from_path(path)).collect()
 }
 
 fn from_file(path: &Path) -> Option<Track> {
-    let mut probe_result = probe_file(path)?;
+    let mut format = probe_file(path)?;
 
     let mut album = None;
     let mut artist = None;
     let mut replay_gain = None;
     let mut title = None;
-    for tag in collect_tags(&mut probe_result) {
-        let Some(std_key) = tag.std_key else { continue };
-        let value = tag.value.to_string();
-        match std_key {
-            StandardTagKey::Album => album = Some(value),
-            StandardTagKey::Artist => artist = Some(value),
-            StandardTagKey::ReplayGainTrackGain => {
-                replay_gain = value.trim_end_matches(" dB").parse().ok();
+    if let Some(revision) = format.metadata().current() {
+        for tag in &revision.media.tags {
+            match &tag.std {
+                Some(StandardTag::Album(value)) => album = Some(value.to_string()),
+                Some(StandardTag::Artist(value)) => artist = Some(value.to_string()),
+                Some(StandardTag::ReplayGainTrackGain(value)) => {
+                    replay_gain = value.trim_end_matches(" dB").parse().ok();
+                }
+                Some(StandardTag::TrackTitle(value)) => title = Some(value.to_string()),
+                _ => {}
             }
-            StandardTagKey::TrackTitle => title = Some(value),
-            _ => {}
         }
     }
 
-    let duration = probe_result.format.default_track().and_then(|track| {
-        let n_frames = track.codec_params.n_frames?;
-        let sample_rate = track.codec_params.sample_rate? as u64;
-        let seconds = n_frames / sample_rate;
-        let nanoseconds = (n_frames % sample_rate) * 1_000_000_000 / sample_rate;
-        Some(Duration::new(seconds, nanoseconds as u32))
+    let duration = format.default_track(TrackType::Audio).and_then(|track| {
+        let (seconds, nanoseconds) = track
+            .time_base?
+            .calc_time(Timestamp::try_from(track.duration?.get()).ok()?)?
+            .parts();
+        Some(Duration::new(seconds as u64, nanoseconds))
     });
 
     Some(Track {
@@ -85,13 +76,13 @@ fn from_file(path: &Path) -> Option<Track> {
     })
 }
 
-fn probe_file(path: &Path) -> Option<ProbeResult> {
+fn probe_file(path: &Path) -> Option<Box<dyn FormatReader>> {
     default::get_probe()
-        .format(
-            &Default::default(),
+        .probe(
+            &Hint::new(),
             MediaSourceStream::new(Box::new(File::open(path).ok()?), Default::default()),
-            &Default::default(),
-            &Default::default(),
+            Default::default(),
+            Default::default(),
         )
         .ok()
 }
@@ -119,28 +110,13 @@ impl Track {
 }
 
 pub fn cover_from_file(path: &Path) -> Option<Vec<u8>> {
-    let mut probe_result = probe_file(path)?;
-
-    probe_result
-        .format
+    probe_file(path)?
         .metadata()
-        .current()
-        .and_then(|revision| {
-            revision
-                .visuals()
-                .first()
-                .map(|visual| visual.data.to_vec())
-        })
-        .or_else(|| {
-            probe_result.metadata.get().and_then(|metadata| {
-                metadata.current().and_then(|revision| {
-                    revision
-                        .visuals()
-                        .first()
-                        .map(|visual| visual.data.to_vec())
-                })
-            })
-        })
+        .current()?
+        .media
+        .visuals
+        .first()
+        .map(|visual| visual.data.to_vec())
 }
 
 pub fn from_path(path: &Path) -> Vec<Track> {

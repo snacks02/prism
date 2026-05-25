@@ -12,4 +12,3 @@ rfd = "0.16"
 rodio = "0.22"
 smol = "2.0"
 symphonia = { features = ["all"], version = "0.5" }
-walkdir = "2.5"

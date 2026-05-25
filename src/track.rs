@@ -1,5 +1,6 @@
 use {
     std::{
+        fs,
         fs::File,
         path::{
             Path,
@@ -18,7 +19,6 @@ use {
         },
         default,
     },
-    walkdir::WalkDir,
 };
 
 fn collect_tags(probe_result: &mut ProbeResult) -> Vec<Tag> {
@@ -37,11 +37,13 @@ fn collect_tags(probe_result: &mut ProbeResult) -> Vec<Tag> {
 }
 
 fn from_directory(path: &Path) -> Vec<Track> {
-    WalkDir::new(path)
-        .sort_by_file_name()
+    let mut paths: Vec<PathBuf> = fs::read_dir(path)
         .into_iter()
-        .filter_map(|entry| from_file(entry.ok()?.path()))
-        .collect()
+        .flatten()
+        .filter_map(|directory_entry| Some(directory_entry.ok()?.path()))
+        .collect();
+    paths.sort();
+    paths.iter().flat_map(|path| from_path(path)).collect()
 }
 
 fn from_file(path: &Path) -> Option<Track> {

@@ -27,11 +27,8 @@ fn from_directory(path: &Path) -> Vec<Track> {
     let mut paths: Vec<PathBuf> = fs::read_dir(path)
         .into_iter()
         .flatten()
-        .filter_map(|directory_entry| {
-            directory_entry
-                .ok()
-                .map(|directory_entry| directory_entry.path())
-        })
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
         .collect();
     paths.sort();
     paths.iter().flat_map(|path| from_path(path)).collect()

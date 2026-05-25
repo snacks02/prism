@@ -17,18 +17,12 @@ impl Queue {
             Some(current) => self
                 .tracks
                 .iter()
-                .skip_while(|track| !Arc::ptr_eq(*track, current))
+                .skip_while(|&track| !Arc::ptr_eq(track, current))
                 .nth(1)
-                .or_else(|| {
-                    if self.repeat {
-                        self.tracks.first()
-                    } else {
-                        None
-                    }
-                }),
-        };
-        self.current = Some(next?.clone());
-        self.current.clone()
+                .or_else(|| self.tracks.first().filter(|_| self.repeat)),
+        }?;
+        self.current = Some(next.clone());
+        Some(next.clone())
     }
 
     pub fn previous(&mut self) -> Option<Arc<Track>> {
@@ -37,18 +31,12 @@ impl Queue {
             Some(current) => self
                 .tracks
                 .iter()
-                .take_while(|track| !Arc::ptr_eq(*track, current))
+                .take_while(|&track| !Arc::ptr_eq(track, current))
                 .last()
-                .or_else(|| {
-                    if self.repeat {
-                        self.tracks.last()
-                    } else {
-                        None
-                    }
-                }),
-        };
-        self.current = Some(previous?.clone());
-        self.current.clone()
+                .or_else(|| self.tracks.last().filter(|_| self.repeat)),
+        }?;
+        self.current = Some(previous.clone());
+        Some(previous.clone())
     }
 
     pub fn repeat(&self) -> bool {

@@ -57,6 +57,7 @@ impl AudioPlayer {
         self.player.append(EmptyCallback::new(Box::new(move || {
             sender.try_send(()).ok();
         })));
+        self.player.play();
         Ok(())
     }
 

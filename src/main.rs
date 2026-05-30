@@ -42,6 +42,7 @@ use {
             row,
             scrollable,
             scrollable::{
+                Direction,
                 Rail,
                 Scroller,
             },
@@ -85,7 +86,8 @@ const DEFAULT_TEXT_SIZE: f32 = 14.0;
 const PADDING_AND_SPACING_LARGE: u32 = 16;
 const PADDING_AND_SPACING_SMALL: u32 = 8;
 const PLAYBACK_BUTTON_SIZE: u32 = 40;
-const SCROLLBAR_PADDING: f32 = 10.0;
+const SCROLLBAR_MARGIN: f32 = 4.0;
+const SCROLLBAR_PADDING: f32 = 10.0 + 2.0 * SCROLLBAR_MARGIN;
 const SEEKBAR_DURATION_CLAMP: f32 = SEEKBAR_DURATION_MAXIMUM - 1.0;
 const SEEKBAR_DURATION_MAXIMUM: f32 = 6000.0;
 const SEEKBAR_DURATION_WIDTH: u32 = 40;
@@ -623,13 +625,20 @@ impl Prism {
             )
             .padding(Padding::ZERO.right(SCROLLBAR_PADDING)),
         )
+        .direction(Direction::Vertical(
+            scrollable::Scrollbar::default().margin(SCROLLBAR_MARGIN),
+        ))
         .style(|theme, status| scrollable::Style {
             vertical_rail: Rail {
                 background: None,
                 border: Default::default(),
                 scroller: Scroller {
                     background: style::COLOR_GRAY_2.into(),
-                    border: Default::default(),
+                    border: Border {
+                        color: Color::TRANSPARENT,
+                        radius: f32::MAX.into(),
+                        ..Default::default()
+                    },
                 },
             },
             ..scrollable::default(theme, status)

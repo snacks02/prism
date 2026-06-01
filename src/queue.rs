@@ -11,8 +11,8 @@ impl Queue {
         }
     }
 
-    pub fn next(&mut self) -> Option<Arc<Track>> {
-        let next = match self.current.as_ref() {
+    pub fn next(&mut self, current: Option<&Arc<Track>>) -> Option<Arc<Track>> {
+        match current {
             None => self.tracks.first(),
             Some(current) => self
                 .tracks
@@ -20,13 +20,12 @@ impl Queue {
                 .skip_while(|&track| !Arc::ptr_eq(track, current))
                 .nth(1)
                 .or_else(|| self.tracks.first().filter(|_| self.repeat)),
-        }?;
-        self.current = Some(next.clone());
-        Some(next.clone())
+        }
+        .cloned()
     }
 
-    pub fn previous(&mut self) -> Option<Arc<Track>> {
-        let previous = match self.current.as_ref() {
+    pub fn previous(&mut self, current: Option<&Arc<Track>>) -> Option<Arc<Track>> {
+        match current {
             None => self.tracks.first(),
             Some(current) => self
                 .tracks
@@ -34,9 +33,8 @@ impl Queue {
                 .take_while(|&track| !Arc::ptr_eq(track, current))
                 .last()
                 .or_else(|| self.tracks.last().filter(|_| self.repeat)),
-        }?;
-        self.current = Some(previous.clone());
-        Some(previous.clone())
+        }
+        .cloned()
     }
 
     pub fn repeat(&self) -> bool {
@@ -49,11 +47,6 @@ impl Queue {
 
     pub fn repeat_enable(&mut self) {
         self.repeat = true;
-    }
-
-    pub fn set_current(&mut self, track: &Arc<Track>) {
-        assert!(self.tracks.iter().any(|queued| Arc::ptr_eq(queued, track)));
-        self.current = Some(track.clone());
     }
 
     pub fn shuffle(&self) -> bool {
@@ -77,7 +70,6 @@ mod tests;
 
 #[derive(Clone, Debug, Default)]
 pub struct Queue {
-    current: Option<Arc<Track>>,
     repeat: bool,
     shuffle: bool,
     tracks: Vec<Arc<Track>>,

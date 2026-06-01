@@ -43,22 +43,19 @@ mod next {
     fn returns_none_when_at_the_last_track() {
         let mut queue = Queue::default();
         let track = new_track("track");
-        queue.current = Some(track.clone());
-        queue.tracks = vec![track];
+        queue.tracks = vec![track.clone()];
 
-        assert!(queue.next().is_none());
+        assert!(queue.next(Some(&track)).is_none());
     }
 
     #[test]
     fn returns_the_first_track_when_at_the_last_track_and_repeat_is_enabled() {
         let mut queue = Queue::default();
         let track = new_track("track");
-        queue.current = Some(track.clone());
         queue.repeat = true;
         queue.tracks = vec![track.clone()];
 
-        assert!(Arc::ptr_eq(queue.next().as_ref().unwrap(), &track));
-        assert!(Arc::ptr_eq(queue.current.as_ref().unwrap(), &track));
+        assert!(Arc::ptr_eq(&queue.next(Some(&track)).unwrap(), &track));
     }
 
     #[test]
@@ -67,8 +64,7 @@ mod next {
         let track = new_track("track");
         queue.tracks = vec![track.clone()];
 
-        assert!(Arc::ptr_eq(queue.next().as_ref().unwrap(), &track));
-        assert!(Arc::ptr_eq(queue.current.as_ref().unwrap(), &track));
+        assert!(Arc::ptr_eq(&queue.next(None).unwrap(), &track));
     }
 
     #[test]
@@ -76,11 +72,9 @@ mod next {
         let mut queue = Queue::default();
         let track_1 = new_track("track_1");
         let track_2 = new_track("track_2");
-        queue.current = Some(track_1.clone());
-        queue.tracks = vec![track_1, track_2.clone()];
+        queue.tracks = vec![track_1.clone(), track_2.clone()];
 
-        assert!(Arc::ptr_eq(queue.next().as_ref().unwrap(), &track_2));
-        assert!(Arc::ptr_eq(queue.current.as_ref().unwrap(), &track_2));
+        assert!(Arc::ptr_eq(&queue.next(Some(&track_1)).unwrap(), &track_2));
     }
 }
 
@@ -91,10 +85,9 @@ mod previous {
     fn returns_none_when_at_the_first_track() {
         let mut queue = Queue::default();
         let track = new_track("track");
-        queue.current = Some(track.clone());
-        queue.tracks = vec![track];
+        queue.tracks = vec![track.clone()];
 
-        assert!(queue.previous().is_none());
+        assert!(queue.previous(Some(&track)).is_none());
     }
 
     #[test]
@@ -103,20 +96,17 @@ mod previous {
         let track = new_track("track");
         queue.tracks = vec![track.clone()];
 
-        assert!(Arc::ptr_eq(queue.previous().as_ref().unwrap(), &track));
-        assert!(Arc::ptr_eq(queue.current.as_ref().unwrap(), &track));
+        assert!(Arc::ptr_eq(&queue.previous(None).unwrap(), &track));
     }
 
     #[test]
     fn returns_the_last_track_when_at_the_first_track_and_repeat_is_enabled() {
         let mut queue = Queue::default();
         let track = new_track("track");
-        queue.current = Some(track.clone());
         queue.repeat = true;
         queue.tracks = vec![track.clone()];
 
-        assert!(Arc::ptr_eq(queue.previous().as_ref().unwrap(), &track));
-        assert!(Arc::ptr_eq(queue.current.as_ref().unwrap(), &track));
+        assert!(Arc::ptr_eq(&queue.previous(Some(&track)).unwrap(), &track));
     }
 
     #[test]
@@ -124,11 +114,12 @@ mod previous {
         let mut queue = Queue::default();
         let track_1 = new_track("track_1");
         let track_2 = new_track("track_2");
-        queue.current = Some(track_2.clone());
-        queue.tracks = vec![track_1.clone(), track_2];
+        queue.tracks = vec![track_1.clone(), track_2.clone()];
 
-        assert!(Arc::ptr_eq(queue.previous().as_ref().unwrap(), &track_1));
-        assert!(Arc::ptr_eq(queue.current.as_ref().unwrap(), &track_1));
+        assert!(Arc::ptr_eq(
+            &queue.previous(Some(&track_2)).unwrap(),
+            &track_1
+        ));
     }
 }
 
@@ -163,20 +154,6 @@ mod repeat_enable {
         queue.repeat_enable();
 
         assert!(queue.repeat);
-    }
-}
-
-mod set_current {
-    use super::*;
-
-    #[test]
-    fn updates_the_current_track() {
-        let mut queue = Queue::default();
-        let track = new_track("track");
-        queue.tracks = vec![track.clone()];
-        queue.set_current(&track);
-
-        assert!(Arc::ptr_eq(queue.current.as_ref().unwrap(), &track));
     }
 }
 

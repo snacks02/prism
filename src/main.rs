@@ -174,7 +174,6 @@ impl Composition for Prism {
             list,
             queue,
             seekbar_position: None,
-            track: None,
         }
     }
 
@@ -270,17 +269,14 @@ impl Composition for Prism {
                 self.list.select_previous();
                 Task::none()
             }
-            Message::KeyboardKeyEnterPress => {
-                self.list.selected().cloned().map_or(Task::none(), |track| {
-                    self.list.set_current_and_selected(&track);
-                    self.queue.set_current(&track);
-                    self.play(track)
-                })
-            }
+            Message::KeyboardKeyEnterPress => self
+                .list
+                .selected()
+                .cloned()
+                .map_or(Task::none(), |track| self.play(track)),
             Message::ListClear => {
                 self.list = List::default();
                 self.queue = Queue::default();
-                self.track = None;
                 Task::none()
             }
             Message::ListExtend(tracks) => {
@@ -290,29 +286,23 @@ impl Composition for Prism {
                     window::oldest().and_then(|id| {
                         window::request_user_attention(id, Some(UserAttention::Informational))
                     }),
-                    self.track
+                    self.list
+                        .current()
                         .is_none()
-                        .then(|| self.queue.next())
+                        .then(|| self.queue.next(self.list.current()))
                         .flatten()
-                        .map_or(Task::none(), |track| {
-                            self.list.set_current_and_selected(&track);
-                            self.play(track)
-                        }),
+                        .map_or(Task::none(), |track| self.play(track)),
                 ])
             }
-            Message::ListPress(track) => {
-                self.list.set_current_and_selected(&track);
-                self.queue.set_current(&track);
-                self.play(track)
-            }
-            Message::ListSelectNext => self.queue.next().map_or(Task::none(), |track| {
-                self.list.set_current_and_selected(&track);
-                self.play(track)
-            }),
-            Message::ListSelectPrevious => self.queue.previous().map_or(Task::none(), |track| {
-                self.list.set_current_and_selected(&track);
-                self.play(track)
-            }),
+            Message::ListPress(track) => self.play(track),
+            Message::ListSelectNext => self
+                .queue
+                .next(self.list.current())
+                .map_or(Task::none(), |track| self.play(track)),
+            Message::ListSelectPrevious => self
+                .queue
+                .previous(self.list.current())
+                .map_or(Task::none(), |track| self.play(track)),
             Message::None => Task::none(),
             Message::SearchTextInput(query) => {
                 self.list.search(query);
@@ -438,7 +428,7 @@ impl Prism {
 
     fn information(&self) -> Element<'_, Message> {
         center(
-            text(if let Some(track) = &self.track {
+            text(if let Some(track) = self.list.current() {
                 [
                     track.title.as_deref(),
                     track.artist.as_deref(),
@@ -461,20 +451,16 @@ impl Prism {
         if self.audio_player.play(&track).is_err() {
             return Task::none();
         }
-        let cover = track::cover_from_file(&track.path);
-        self.track = Some(track);
-        match cover {
-            None => {
-                self.color_primary = style::COLOR_PRIMARY;
-                self.cover_allocation = None;
-                Task::none()
-            }
-            Some(bytes) => {
-                self.color_primary =
-                    style::color_primary(image::load_from_memory(&bytes).ok().as_ref());
-                widget::image::allocate(widget::image::Handle::from_bytes(bytes))
-                    .map(|result| Message::CoverAllocationLoad(result.ok()))
-            }
+        self.list.set_current_and_selected(&track);
+        if let Some(bytes) = track::cover_from_file(&track.path) {
+            self.color_primary =
+                style::color_primary(image::load_from_memory(&bytes).ok().as_ref());
+            widget::image::allocate(widget::image::Handle::from_bytes(bytes))
+                .map(|result| Message::CoverAllocationLoad(result.ok()))
+        } else {
+            self.color_primary = style::COLOR_PRIMARY;
+            self.cover_allocation = None;
+            Task::none()
         }
     }
 
@@ -499,8 +485,8 @@ impl Prism {
 
     fn seekbar(&self) -> Element<'_, Message> {
         let duration = self
-            .track
-            .as_ref()
+            .list
+            .current()
             .map_or(0.0, |track| track.duration_seconds());
         let position = self
             .seekbar_position
@@ -692,5 +678,4 @@ pub struct Prism {
     list: List,
     queue: Queue,
     seekbar_position: Option<f32>,
-    track: Option<Arc<Track>>,
 }

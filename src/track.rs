@@ -41,7 +41,7 @@ fn from_file(path: &Path) -> Option<Track> {
     let mut artist = None;
     let mut replay_gain = None;
     let mut title = None;
-    if let Some(revision) = format.metadata().current() {
+    if let Some(revision) = format.metadata().skip_to_latest() {
         for tag in &revision.media.tags {
             match &tag.std {
                 Some(StandardTag::Album(value)) => album = Some(value.to_string()),
@@ -109,7 +109,7 @@ impl Track {
 pub fn cover_from_file(path: &Path) -> Option<Vec<u8>> {
     probe_file(path)?
         .metadata()
-        .current()?
+        .skip_to_latest()?
         .media
         .visuals
         .first()

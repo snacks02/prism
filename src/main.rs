@@ -42,7 +42,6 @@ use {
             row,
             scrollable,
             scrollable::{
-                Direction,
                 Rail,
                 Scroller,
             },
@@ -86,8 +85,7 @@ const DEFAULT_TEXT_SIZE: f32 = 14.0;
 const PADDING_AND_SPACING_LARGE: u32 = 16;
 const PADDING_AND_SPACING_SMALL: u32 = 8;
 const PLAYBACK_BUTTON_SIZE: u32 = 40;
-const SCROLLBAR_MARGIN: f32 = 4.0;
-const SCROLLBAR_PADDING: f32 = 10.0 + 2.0 * SCROLLBAR_MARGIN;
+const SCROLLBAR_PADDING: f32 = 10.0;
 const SEEKBAR_DURATION_CLAMP: f32 = SEEKBAR_DURATION_MAXIMUM - 1.0;
 const SEEKBAR_DURATION_MAXIMUM: f32 = 6000.0;
 const SEEKBAR_DURATION_WIDTH: u32 = 40;
@@ -414,7 +412,6 @@ impl Prism {
             )
             .center(COVER_SIZE)
             .style(|_| Style {
-                background: Some(style::COLOR_GRAY_1.into()),
                 border: Border {
                     color: style::COLOR_GRAY_2,
                     radius: COVER_BORDER_RADIUS.into(),
@@ -592,7 +589,7 @@ impl Prism {
                                 track_text_container(track.artist_str(), Weight::Normal),
                                 track_text_container(track.album_str(), Weight::Normal),
                             ])
-                            .style(move |theme: &Theme| Style {
+                            .style(move |theme| Style {
                                 background: if current {
                                     Some(theme.palette().primary.base.color.into())
                                 } else if selected {
@@ -611,20 +608,13 @@ impl Prism {
             )
             .padding(Padding::ZERO.right(SCROLLBAR_PADDING)),
         )
-        .direction(Direction::Vertical(
-            scrollable::Scrollbar::default().margin(SCROLLBAR_MARGIN),
-        ))
         .style(|theme, status| scrollable::Style {
             vertical_rail: Rail {
                 background: None,
                 border: Default::default(),
                 scroller: Scroller {
-                    background: style::COLOR_GRAY_2.into(),
-                    border: Border {
-                        color: Color::TRANSPARENT,
-                        radius: f32::MAX.into(),
-                        ..Default::default()
-                    },
+                    background: theme.palette().primary.base.color.into(),
+                    border: Default::default(),
                 },
             },
             ..scrollable::default(theme, status)

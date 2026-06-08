@@ -11,7 +11,7 @@ impl Queue {
         }
     }
 
-    pub fn next(&mut self, current: Option<&Arc<Track>>) -> Option<Arc<Track>> {
+    pub fn next(&self, current: Option<&Arc<Track>>) -> Option<Arc<Track>> {
         match current {
             None => self.tracks.first(),
             Some(current) => self
@@ -24,7 +24,7 @@ impl Queue {
         .cloned()
     }
 
-    pub fn previous(&mut self, current: Option<&Arc<Track>>) -> Option<Arc<Track>> {
+    pub fn previous(&self, current: Option<&Arc<Track>>) -> Option<Arc<Track>> {
         match current {
             None => self.tracks.first(),
             Some(current) => self
@@ -68,7 +68,7 @@ impl Queue {
 #[path = "queue_test.rs"]
 mod tests;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub struct Queue {
     repeat: bool,
     shuffle: bool,

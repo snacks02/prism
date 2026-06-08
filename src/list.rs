@@ -118,7 +118,7 @@ impl List {
 #[path = "list_test.rs"]
 mod tests;
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct List {
     current: Option<Arc<Track>>,
     matching: Vec<Arc<Track>>,

@@ -48,7 +48,7 @@ impl AudioPlayer {
         }
     }
 
-    pub fn play(&mut self, track: &Track) -> Result<(), Box<dyn Error>> {
+    pub fn play(&self, track: &Track) -> Result<(), Box<dyn Error>> {
         let decoder = Decoder::try_from(File::open(&track.path)?)?;
         let sender = self.track_end_sender.clone();
         self.player.stop();
@@ -65,7 +65,7 @@ impl AudioPlayer {
         self.player.get_pos().as_secs_f32()
     }
 
-    pub fn set_volume(&mut self, volume: f32) {
+    pub fn set_volume(&self, volume: f32) {
         self.player.set_volume(volume);
     }
 

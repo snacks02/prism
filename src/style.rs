@@ -4,7 +4,7 @@ use {
 };
 
 fn color_from_dynamic_image(image: &DynamicImage) -> Color {
-    let (mut red, mut green, mut blue, mut weight) = (0u64, 0u64, 0u64, 0u64);
+    let (mut red, mut green, mut blue, mut weight) = (0, 0, 0, 0);
     for pixel in image.to_rgb8().pixels() {
         let [pixel_red, pixel_green, pixel_blue] = pixel.0;
         let maximum = pixel_red.max(pixel_green).max(pixel_blue) as u64;

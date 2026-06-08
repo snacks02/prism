@@ -14,7 +14,6 @@ use {
         Event::Keyboard,
         Font,
         Length,
-        Padding,
         Result,
         Settings,
         Subscription,
@@ -28,6 +27,7 @@ use {
             Key,
             key::Named,
         },
+        padding,
         theme::palette::Seed,
         time,
         widget,
@@ -85,19 +85,41 @@ const DEFAULT_TEXT_SIZE: f32 = 14.0;
 const PADDING_AND_SPACING_LARGE: u32 = 16;
 const PADDING_AND_SPACING_SMALL: u32 = 8;
 const PLAYBACK_BUTTON_SIZE: u32 = 40;
+const ROW_HEIGHT: u32 = 36;
+const ROW_TEXT_PADDING_HORIZONTAL: u32 = 10;
 const SCROLLBAR_PADDING: f32 = 10.0;
 const SEEKBAR_DURATION_CLAMP: f32 = SEEKBAR_DURATION_MAXIMUM - 1.0;
 const SEEKBAR_DURATION_MAXIMUM: f32 = 6000.0;
 const SEEKBAR_DURATION_WIDTH: u32 = 40;
 const SEEKBAR_STEP: f32 = 0.001;
 const SEEKBAR_TICK_INTERVAL: Duration = Duration::from_millis(16);
-const TOOLBAR_SIZE: u32 = 36;
-const TRACK_TEXT_CONTAINER_HEIGHT: u32 = 36;
-const TRACK_TEXT_CONTAINER_PADDING_HORIZONTAL: u32 = 10;
 const VOLUME_DEFAULT: f32 = VOLUME_MAXIMUM / 2.0;
 const VOLUME_MAXIMUM: f32 = 1.0;
 const VOLUME_STEP: f32 = 0.01;
 const VOLUME_WIDTH: u32 = 88;
+
+#[derive(Clone, Debug)]
+enum Message {
+    ButtonFileOpenPress,
+    ButtonFolderOpenPress,
+    ButtonPauseOrPlayPress,
+    ButtonRepeatPress,
+    ButtonShufflePress,
+    CoverAllocationLoad(Option<Allocation>),
+    KeyboardKeyArrowDownPress,
+    KeyboardKeyArrowUpPress,
+    KeyboardKeyEnterPress,
+    ListClear,
+    ListExtend(Vec<Track>),
+    ListPress(Arc<Track>),
+    ListSelectNext,
+    ListSelectPrevious,
+    None,
+    SearchTextInput(String),
+    SliderSeekbarChange(f32),
+    SliderSeekbarRelease,
+    SliderVolumeChange(f32),
+}
 
 fn duration_text<'a>(seconds: f32) -> Text<'a> {
     let clamped_seconds = seconds.min(SEEKBAR_DURATION_CLAMP) as i32;
@@ -147,8 +169,8 @@ fn track_text_container(value: &str, weight: Weight) -> Element<'_, Message> {
             .wrapping(Wrapping::None),
     )
     .align_y(Alignment::Center)
-    .height(TRACK_TEXT_CONTAINER_HEIGHT)
-    .padding(Padding::ZERO.horizontal(TRACK_TEXT_CONTAINER_PADDING_HORIZONTAL))
+    .height(ROW_HEIGHT)
+    .padding(padding::horizontal(ROW_TEXT_PADDING_HORIZONTAL))
     .into()
 }
 
@@ -368,7 +390,7 @@ impl Prism {
                     Message::ButtonPauseOrPlayPress,
                     PLAYBACK_BUTTON_SIZE,
                 ))
-                .padding(Padding::ZERO.horizontal(PADDING_AND_SPACING_LARGE)),
+                .padding(padding::horizontal(PADDING_AND_SPACING_LARGE)),
                 view_helper::button(
                     Color::TRANSPARENT.into(),
                     style::COLOR_GRAY_4,
@@ -470,11 +492,7 @@ impl Prism {
             self.controls(),
         ]
         .height(Length::Shrink)
-        .padding(
-            Padding::ZERO
-                .horizontal(PADDING_AND_SPACING_SMALL)
-                .vertical(PADDING_AND_SPACING_LARGE),
-        )
+        .padding(padding::horizontal(PADDING_AND_SPACING_SMALL).vertical(PADDING_AND_SPACING_LARGE))
         .spacing(PADDING_AND_SPACING_LARGE)
         .width(Length::Fill)
         .into()
@@ -522,7 +540,7 @@ impl Prism {
             style::COLOR_GRAY_3,
             svg::Handle::from_memory(icon::FILE_PLUS),
             Message::ButtonFileOpenPress,
-            TOOLBAR_SIZE,
+            ROW_HEIGHT,
         );
 
         let folder_open_button = view_helper::button(
@@ -530,7 +548,7 @@ impl Prism {
             style::COLOR_GRAY_3,
             svg::Handle::from_memory(icon::FOLDER_PLUS),
             Message::ButtonFolderOpenPress,
-            TOOLBAR_SIZE,
+            ROW_HEIGHT,
         );
 
         let search_row = row![
@@ -543,7 +561,7 @@ impl Prism {
                     .width(style::ICON_SIZE),
             )
             .height(Length::Fill)
-            .width(TOOLBAR_SIZE),
+            .width(ROW_HEIGHT),
             text_input("Search", self.list.search_query())
                 .on_input(Message::SearchTextInput)
                 .padding(0)
@@ -566,7 +584,7 @@ impl Prism {
             track_text_container("Artist", Weight::Bold),
             track_text_container("Album", Weight::Bold),
         ])
-        .padding(Padding::ZERO.right(SCROLLBAR_PADDING));
+        .padding(padding::right(SCROLLBAR_PADDING));
 
         let rows = scrollable(
             column(
@@ -606,7 +624,7 @@ impl Prism {
                         .into()
                     }),
             )
-            .padding(Padding::ZERO.right(SCROLLBAR_PADDING)),
+            .padding(padding::right(SCROLLBAR_PADDING)),
         )
         .style(|theme, status| scrollable::Style {
             vertical_rail: Rail {
@@ -638,30 +656,7 @@ impl Prism {
     }
 }
 
-#[derive(Clone, Debug)]
-pub enum Message {
-    ButtonFileOpenPress,
-    ButtonFolderOpenPress,
-    ButtonPauseOrPlayPress,
-    ButtonRepeatPress,
-    ButtonShufflePress,
-    CoverAllocationLoad(Option<Allocation>),
-    KeyboardKeyArrowDownPress,
-    KeyboardKeyArrowUpPress,
-    KeyboardKeyEnterPress,
-    ListClear,
-    ListExtend(Vec<Track>),
-    ListPress(Arc<Track>),
-    ListSelectNext,
-    ListSelectPrevious,
-    None,
-    SearchTextInput(String),
-    SliderSeekbarChange(f32),
-    SliderSeekbarRelease,
-    SliderVolumeChange(f32),
-}
-
-pub struct Prism {
+struct Prism {
     audio_player: AudioPlayer,
     color_primary: Color,
     cover_allocation: Option<Allocation>,

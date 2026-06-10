@@ -33,3 +33,7 @@ pub const ICON_SIZE: u32 = 18;
 pub fn color_primary(cover: Option<&DynamicImage>) -> Color {
     cover.map_or(COLOR_PRIMARY, color_from_dynamic_image)
 }
+
+pub fn sufficiently_bright(color: Color) -> bool {
+    color.r * 0.299 + color.g * 0.587 + color.b * 0.114 > 0.5
+}

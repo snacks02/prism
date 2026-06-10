@@ -607,17 +607,22 @@ impl Prism {
                                 track_text_container(track.artist_str(), Weight::Normal),
                                 track_text_container(track.album_str(), Weight::Normal),
                             ])
-                            .style(move |theme| Style {
-                                background: if current {
-                                    Some(theme.palette().primary.base.color.into())
+                            .style(move |theme| {
+                                let background_color = if current {
+                                    theme.palette().primary.base.color
                                 } else if selected {
-                                    Some(style::COLOR_GRAY_2.into())
+                                    style::COLOR_GRAY_2
                                 } else if position % 2 == 0 {
-                                    Some(style::COLOR_GRAY_1.into())
+                                    style::COLOR_GRAY_1
                                 } else {
-                                    None
-                                },
-                                ..Default::default()
+                                    return Default::default();
+                                };
+                                Style {
+                                    background: Some(background_color.into()),
+                                    text_color: style::sufficiently_bright(background_color)
+                                        .then_some(Color::BLACK),
+                                    ..Default::default()
+                                }
                             }),
                         )
                         .on_press(Message::ListPress(track.clone()))

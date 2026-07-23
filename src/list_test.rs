@@ -190,10 +190,21 @@ mod set_current_and_selected {
     fn updates_the_current_and_selected_track() {
         let mut list = List::default();
         let track = new_track("track");
-        list.set_current_and_selected(&track);
+        list.set_current_and_selected(Some(&track));
 
         assert!(Arc::ptr_eq(list.current.as_ref().unwrap(), &track));
         assert!(Arc::ptr_eq(list.selected.as_ref().unwrap(), &track));
+    }
+
+    #[test]
+    fn clears_the_current_and_selected_track() {
+        let mut list = List::default();
+        let track = new_track("track");
+        list.set_current_and_selected(Some(&track));
+        list.set_current_and_selected(None);
+
+        assert!(list.current.is_none());
+        assert!(list.selected.is_none());
     }
 }
 

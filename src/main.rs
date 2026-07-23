@@ -102,6 +102,7 @@ const VOLUME_WIDTH: u32 = 88;
 
 #[derive(Clone, Debug)]
 enum Message {
+    AudioEnd,
     ButtonFileOpenPress,
     ButtonFolderOpenPress,
     ButtonPauseOrPlayPress,
@@ -232,6 +233,14 @@ impl Composition for Prism {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::AudioEnd => {
+                if let Some(track) = self.queue.next(self.list.current()) {
+                    return self.play(track);
+                }
+                self.color_primary = style::COLOR_PRIMARY;
+                self.cover_allocation = None;
+                self.list.set_current_and_selected(None);
+            }
             Message::ButtonFileOpenPress => {
                 return Task::perform(AsyncFileDialog::new().pick_file(), |handle| {
                     Message::ListExtend(
@@ -440,9 +449,9 @@ impl Prism {
             return Task::none();
         };
 
-        self.list.set_current_and_selected(&track);
+        self.list.set_current_and_selected(Some(&track));
 
-        let audio_end_task = Task::run(audio_end_receiver, |_| Message::ListSelectNext);
+        let audio_end_task = Task::run(audio_end_receiver, |_| Message::AudioEnd);
         let cover_task = if let Some(bytes) = track::cover_from_file(&track.path) {
             self.color_primary =
                 style::color_primary(image::load_from_memory(&bytes).ok().as_ref());

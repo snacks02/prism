@@ -1,5 +1,5 @@
 [dependencies]
-fastrand = "2.4"
+fastrand = "2.5"
 iced = { features = ["image", "smol", "svg"], git = "https://github.com/iced-rs/iced" }
 image = "0.25"
 nucleo = "0.5"

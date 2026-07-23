@@ -1,8 +1,3 @@
-[package]
-edition = "2024"
-name = "prism"
-version = "0.1.0"
-
 [dependencies]
 fastrand = "2.4"
 iced = { features = ["image", "smol", "svg"], git = "https://github.com/iced-rs/iced" }
@@ -12,3 +7,8 @@ rfd = "0.17"
 rodio = { default-features = false, features = ["playback", "symphonia-all"], version = "0.22" }
 smol = "2.0"
 symphonia = { features = ["all"], version = "0.6" }
+
+[package]
+edition = "2024"
+name = "prism"
+version = "0.1.0"

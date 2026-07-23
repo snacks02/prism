@@ -1,12 +1,14 @@
 use {
     iced::Color,
-    image::DynamicImage,
+    image::{
+        DynamicImage,
+        Rgb,
+    },
 };
 
 fn color_from_dynamic_image(image: &DynamicImage) -> Color {
     let (mut red, mut green, mut blue, mut weight) = (0, 0, 0, 0);
-    for pixel in image.to_rgb8().pixels() {
-        let [pixel_red, pixel_green, pixel_blue] = pixel.0;
+    for &Rgb([pixel_red, pixel_green, pixel_blue]) in image.to_rgb8().pixels() {
         let maximum = pixel_red.max(pixel_green).max(pixel_blue) as u64;
         let minimum = pixel_red.min(pixel_green).min(pixel_blue) as u64;
         let saturation = (maximum - minimum).saturating_add(1);

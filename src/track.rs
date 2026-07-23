@@ -43,24 +43,26 @@ fn from_file(path: &Path) -> Option<Track> {
     let mut title = None;
     if let Some(revision) = format.metadata().skip_to_latest() {
         for tag in &revision.media.tags {
-            match &tag.std {
-                Some(StandardTag::Album(value)) => album = Some(value.to_string()),
-                Some(StandardTag::Artist(value)) => artist = Some(value.to_string()),
-                Some(StandardTag::ReplayGainTrackGain(value)) => {
-                    replay_gain = value.trim_end_matches(" dB").parse().ok();
+            if let Some(standard_tag) = &tag.std {
+                match standard_tag {
+                    StandardTag::Album(value) => album = Some(value.to_string()),
+                    StandardTag::Artist(value) => artist = Some(value.to_string()),
+                    StandardTag::ReplayGainTrackGain(value) => {
+                        replay_gain = value.trim_end_matches(" dB").parse().ok();
+                    }
+                    StandardTag::TrackTitle(value) => title = Some(value.to_string()),
+                    _ => {}
                 }
-                Some(StandardTag::TrackTitle(value)) => title = Some(value.to_string()),
-                _ => {}
             }
         }
     }
 
     let duration = format.default_track(TrackType::Audio).and_then(|track| {
-        let (seconds, nanoseconds) = track
+        track
             .time_base?
-            .calc_time(Timestamp::try_from(track.duration?.get()).ok()?)?
-            .parts();
-        Some(Duration::new(seconds as u64, nanoseconds))
+            .calc_time(Timestamp::try_from(track.duration?.get()).ok()?)
+            .and_then(|time| u64::try_from(time.as_nanos()).ok())
+            .map(Duration::from_nanos)
     });
 
     Some(Track {
@@ -94,7 +96,7 @@ impl Track {
     }
 
     pub fn duration_seconds(&self) -> f32 {
-        self.duration.map_or(0.0, |duration| duration.as_secs_f32())
+        self.duration.as_ref().map_or(0.0, Duration::as_secs_f32)
     }
 
     pub fn replay_gain_f32(&self) -> f32 {

@@ -50,13 +50,14 @@ impl List {
         self.current.as_ref()
     }
 
-    pub fn extend(&mut self, tracks: Vec<Arc<Track>>) -> Vec<Arc<Track>> {
+    pub fn extend(&mut self, tracks: Vec<Track>) -> Vec<Arc<Track>> {
         let paths: HashSet<&PathBuf> = self.tracks.iter().map(|track| &track.path).collect();
         let new_tracks: Vec<Arc<Track>> = tracks
             .into_iter()
             .filter(|track| !paths.contains(&track.path))
+            .map(Arc::new)
             .collect();
-        self.tracks.extend(new_tracks.iter().cloned());
+        self.tracks.extend_from_slice(&new_tracks);
         self.refresh_matching();
         new_tracks
     }
@@ -75,29 +76,31 @@ impl List {
     }
 
     pub fn select_next(&mut self) {
-        self.selected = match self.selected.as_ref().and_then(|selected| {
-            self.matching
-                .iter()
-                .position(|track| Arc::ptr_eq(track, selected))
-        }) {
-            None => self.matching.first().cloned(),
-            Some(index) => self
-                .matching
-                .get(index + 1)
-                .cloned()
-                .or_else(|| self.selected.clone()),
+        let Some(selected) = self.selected.as_ref() else {
+            self.selected = self.matching.first().cloned();
+            return;
         };
+        self.selected = self
+            .matching
+            .iter()
+            .skip_while(|&track| !Arc::ptr_eq(selected, track))
+            .nth(1)
+            .cloned()
+            .or_else(|| self.selected.clone());
     }
 
     pub fn select_previous(&mut self) {
-        self.selected = match self.selected.as_ref().and_then(|selected| {
-            self.matching
-                .iter()
-                .position(|track| Arc::ptr_eq(track, selected))
-        }) {
-            None | Some(0) => self.matching.first().cloned(),
-            Some(index) => self.matching.get(index - 1).cloned(),
+        let Some(selected) = self.selected.as_ref() else {
+            self.selected = self.matching.first().cloned();
+            return;
         };
+        self.selected = self
+            .matching
+            .iter()
+            .take_while(|&track| !Arc::ptr_eq(selected, track))
+            .last()
+            .cloned()
+            .or_else(|| self.selected.clone());
     }
 
     pub fn selected(&self) -> Option<&Arc<Track>> {

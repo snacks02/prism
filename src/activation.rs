@@ -1,10 +1,10 @@
 use {
     smol::{
-        Async,
         io::{
             AsyncBufReadExt,
             BufReader,
         },
+        net::unix::UnixListener,
         stream,
         stream::{
             Stream,
@@ -15,18 +15,14 @@ use {
         env,
         fs,
         io::Write,
-        os::unix::net::{
-            UnixListener,
-            UnixStream,
-        },
+        os::unix::net::UnixStream,
         path::PathBuf,
     },
 };
 
 fn socket_path() -> PathBuf {
     env::var("XDG_RUNTIME_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| env::temp_dir())
+        .map_or_else(|_| env::temp_dir(), PathBuf::from)
         .join("prism.sock")
 }
 
@@ -48,7 +44,7 @@ pub fn incoming() -> impl Stream<Item = Vec<PathBuf>> {
     let socket_path = socket_path();
     let _ = fs::remove_file(&socket_path);
     stream::unfold(
-        UnixListener::bind(&socket_path).and_then(Async::new).ok(),
+        UnixListener::bind(&socket_path).ok(),
         |unix_listener| async move {
             let unix_listener = unix_listener?;
             let (unix_stream, _) = unix_listener.accept().await.unwrap();

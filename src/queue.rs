@@ -12,29 +12,27 @@ impl Queue {
     }
 
     pub fn next(&self, current: Option<&Arc<Track>>) -> Option<Arc<Track>> {
-        match current {
-            None => self.tracks.first(),
-            Some(current) => self
-                .tracks
-                .iter()
-                .skip_while(|&track| !Arc::ptr_eq(track, current))
-                .nth(1)
-                .or_else(|| self.tracks.first().filter(|_| self.repeat)),
-        }
-        .cloned()
+        let Some(current) = current else {
+            return self.tracks.first().cloned();
+        };
+        self.tracks
+            .iter()
+            .skip_while(|&track| !Arc::ptr_eq(current, track))
+            .nth(1)
+            .or_else(|| self.tracks.first().filter(|_| self.repeat))
+            .cloned()
     }
 
     pub fn previous(&self, current: Option<&Arc<Track>>) -> Option<Arc<Track>> {
-        match current {
-            None => self.tracks.first(),
-            Some(current) => self
-                .tracks
-                .iter()
-                .take_while(|&track| !Arc::ptr_eq(track, current))
-                .last()
-                .or_else(|| self.tracks.last().filter(|_| self.repeat)),
-        }
-        .cloned()
+        let Some(current) = current else {
+            return self.tracks.first().cloned();
+        };
+        self.tracks
+            .iter()
+            .take_while(|&track| !Arc::ptr_eq(current, track))
+            .last()
+            .or_else(|| self.tracks.last().filter(|_| self.repeat))
+            .cloned()
     }
 
     pub fn repeat(&self) -> bool {

@@ -32,10 +32,10 @@ mod extend {
         let mut list = List::default();
         let track = new_track("track");
 
-        assert_eq!(list.extend(vec![track.clone()]), &[track.clone()]);
+        assert_eq!(list.extend(vec![track.as_ref().clone()]), &[track.clone()]);
         assert_eq!(list.tracks, &[track.clone()]);
 
-        assert_eq!(list.extend(vec![track.clone()]), &[]);
+        assert_eq!(list.extend(vec![track.as_ref().clone()]), &[]);
         assert_eq!(list.tracks, &[track.clone()]);
     }
 
@@ -46,7 +46,7 @@ mod extend {
         let track_1 = new_track("track_1");
         let track_2 = new_track("track_2");
 
-        list.extend(vec![track_1.clone(), track_2]);
+        list.extend(vec![track_1.as_ref().clone(), track_2.as_ref().clone()]);
 
         assert_eq!(list.matching, &[track_1]);
     }

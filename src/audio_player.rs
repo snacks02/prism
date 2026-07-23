@@ -5,19 +5,16 @@ use {
         DeviceSinkBuilder,
         MixerDeviceSink,
         Player,
-        Source,
-        source::EmptyCallback,
+        source::{
+            EmptyCallback,
+            Source,
+        },
     },
     smol::channel,
-    smol::channel::{
-        Receiver,
-        Sender,
-    },
+    smol::channel::Receiver,
     std::{
         error::Error,
         fs::File,
-        hash,
-        sync::Arc,
         time::Duration,
     },
 };
@@ -28,15 +25,12 @@ impl AudioPlayer {
     }
 
     pub fn new(volume: f32) -> Self {
-        let (track_end_sender, track_end_receiver) = channel::unbounded();
         let mixer_device_sink = DeviceSinkBuilder::open_default_sink().unwrap();
         let player = Player::connect_new(mixer_device_sink.mixer());
         player.set_volume(volume);
         Self {
             _mixer_device_sink: mixer_device_sink,
             player,
-            track_end_receiver: TrackEndReceiver(Arc::new(track_end_receiver)),
-            track_end_sender,
         }
     }
 
@@ -48,17 +42,17 @@ impl AudioPlayer {
         }
     }
 
-    pub fn play(&self, track: &Track) -> Result<(), Box<dyn Error>> {
-        let decoder = Decoder::try_from(File::open(&track.path)?)?;
-        let sender = self.track_end_sender.clone();
+    pub fn play(&self, track: &Track) -> Result<Receiver<()>, Box<dyn Error>> {
+        let (audio_end_sender, audio_end_receiver) = channel::bounded(1);
+        let decoder = Decoder::new(File::open(&track.path)?)?;
         self.player.stop();
         self.player
             .append(decoder.amplify_decibel(track.replay_gain_f32()));
         self.player.append(EmptyCallback::new(Box::new(move || {
-            sender.try_send(()).ok();
+            audio_end_sender.try_send(()).ok();
         })));
         self.player.play();
-        Ok(())
+        Ok(audio_end_receiver)
     }
 
     pub fn position(&self) -> f32 {
@@ -67,10 +61,6 @@ impl AudioPlayer {
 
     pub fn set_volume(&self, volume: f32) {
         self.player.set_volume(volume);
-    }
-
-    pub fn track_end_receiver(&self) -> TrackEndReceiver {
-        self.track_end_receiver.clone()
     }
 
     pub fn try_seek(&self, seconds: f32) {
@@ -82,18 +72,7 @@ impl AudioPlayer {
     }
 }
 
-impl hash::Hash for TrackEndReceiver {
-    fn hash<Hasher: hash::Hasher>(&self, state: &mut Hasher) {
-        Arc::as_ptr(&self.0).hash(state);
-    }
-}
-
 pub struct AudioPlayer {
     _mixer_device_sink: MixerDeviceSink,
     player: Player,
-    track_end_receiver: TrackEndReceiver,
-    track_end_sender: Sender<()>,
 }
-
-#[derive(Clone, Debug)]
-pub struct TrackEndReceiver(pub Arc<Receiver<()>>);

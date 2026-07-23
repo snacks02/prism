@@ -12,7 +12,6 @@ use {
         Color,
         Element,
         Event::Keyboard,
-        Font,
         Length,
         Result,
         Settings,
@@ -21,7 +20,10 @@ use {
         Theme,
         event,
         event::Status,
-        font::Weight,
+        font::{
+            Font,
+            Weight,
+        },
         keyboard::{
             Event::KeyPressed,
             Key,
@@ -122,7 +124,7 @@ enum Message {
 }
 
 fn duration_text<'a>(seconds: f32) -> Text<'a> {
-    let clamped_seconds = seconds.min(SEEKBAR_DURATION_CLAMP) as i32;
+    let clamped_seconds = seconds.min(SEEKBAR_DURATION_CLAMP) as u32;
 
     text(format!(
         "{:02}:{:02}{}",
@@ -161,10 +163,7 @@ fn track_text_container(value: &str, weight: Weight) -> Element<'_, Message> {
     container(
         text(value)
             .ellipsis(Ellipsis::End)
-            .font(Font {
-                weight,
-                ..Default::default()
-            })
+            .font(Font::default().weight(weight))
             .width(Length::Fill)
             .wrapping(Wrapping::None),
     )
@@ -183,7 +182,6 @@ impl Composition for Prism {
                 env::args()
                     .skip(1)
                     .flat_map(|argument| track::from_path(Path::new(&argument)))
-                    .map(Arc::new)
                     .collect(),
             ),
         );
@@ -212,62 +210,53 @@ impl Composition for Prism {
             })
         });
         let keyboard_subscription = event::listen_with(|event, status, _| match event {
-            Keyboard(KeyPressed { key, .. }) => match key {
-                Key::Named(Named::ArrowDown) => Some(Message::KeyboardKeyArrowDownPress),
-                Key::Named(Named::ArrowUp) => Some(Message::KeyboardKeyArrowUpPress),
-                Key::Named(Named::Enter) => Some(Message::KeyboardKeyEnterPress),
-                Key::Named(Named::Space) if status == Status::Ignored => {
-                    Some(Message::ButtonPauseOrPlayPress)
-                }
+            Keyboard(KeyPressed {
+                key: Key::Named(named),
+                ..
+            }) => match named {
+                Named::ArrowDown => Some(Message::KeyboardKeyArrowDownPress),
+                Named::ArrowUp => Some(Message::KeyboardKeyArrowUpPress),
+                Named::Enter => Some(Message::KeyboardKeyEnterPress),
+                Named::Space if status == Status::Ignored => Some(Message::ButtonPauseOrPlayPress),
                 _ => None,
             },
             _ => None,
         });
         let seekbar_subscription = time::every(SEEKBAR_TICK_INTERVAL).map(|_| Message::None);
-        let track_end_subscription =
-            Subscription::run_with(self.audio_player.track_end_receiver(), |receiver| {
-                receiver.0.as_ref().clone()
-            })
-            .map(|_| Message::ListSelectNext);
         Subscription::batch([
             activation_subscription,
             keyboard_subscription,
             seekbar_subscription,
-            track_end_subscription,
         ])
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ButtonFileOpenPress => {
-                Task::perform(AsyncFileDialog::new().pick_file(), |handle| {
+                return Task::perform(AsyncFileDialog::new().pick_file(), |handle| {
                     Message::ListExtend(
                         handle
                             .map(|handle| track::from_path(handle.path()))
                             .unwrap_or_default(),
                     )
-                })
+                });
             }
             Message::ButtonFolderOpenPress => {
-                Task::perform(AsyncFileDialog::new().pick_folder(), |handle| {
+                return Task::perform(AsyncFileDialog::new().pick_folder(), |handle| {
                     Message::ListExtend(
                         handle
                             .map(|handle| track::from_path(handle.path()))
                             .unwrap_or_default(),
                     )
-                })
+                });
             }
-            Message::ButtonPauseOrPlayPress => {
-                self.audio_player.pause_or_play();
-                Task::none()
-            }
+            Message::ButtonPauseOrPlayPress => self.audio_player.pause_or_play(),
             Message::ButtonRepeatPress => {
                 if self.queue.repeat() {
                     self.queue.repeat_disable();
                 } else {
                     self.queue.repeat_enable();
                 }
-                Task::none()
             }
             Message::ButtonShufflePress => {
                 if self.queue.shuffle() {
@@ -275,74 +264,54 @@ impl Composition for Prism {
                 } else {
                     self.queue.shuffle_enable();
                 }
-                Task::none()
             }
-            Message::CoverAllocationLoad(allocation) => {
-                self.cover_allocation = allocation;
-                Task::none()
+            Message::CoverAllocationLoad(allocation) => self.cover_allocation = allocation,
+            Message::KeyboardKeyArrowDownPress => self.list.select_next(),
+            Message::KeyboardKeyArrowUpPress => self.list.select_previous(),
+            Message::KeyboardKeyEnterPress => {
+                if let Some(track) = self.list.selected().cloned() {
+                    return self.play(track);
+                }
             }
-            Message::KeyboardKeyArrowDownPress => {
-                self.list.select_next();
-                Task::none()
-            }
-            Message::KeyboardKeyArrowUpPress => {
-                self.list.select_previous();
-                Task::none()
-            }
-            Message::KeyboardKeyEnterPress => self
-                .list
-                .selected()
-                .cloned()
-                .map_or(Task::none(), |track| self.play(track)),
             Message::ListClear => {
                 self.list = List::default();
                 self.queue = Queue::default();
-                Task::none()
             }
             Message::ListExtend(tracks) => {
-                self.queue
-                    .extend(self.list.extend(tracks.into_iter().map(Arc::new).collect()));
-                Task::batch([
+                self.queue.extend(self.list.extend(tracks));
+                return Task::batch([
                     window::oldest().and_then(|id| {
                         window::request_user_attention(id, Some(UserAttention::Informational))
                     }),
-                    self.list
-                        .current()
-                        .is_none()
-                        .then(|| self.queue.next(self.list.current()))
-                        .flatten()
-                        .map_or(Task::none(), |track| self.play(track)),
-                ])
+                    if let (None, Some(track)) = (self.list.current(), self.queue.next(None)) {
+                        self.play(track)
+                    } else {
+                        Task::none()
+                    },
+                ]);
             }
-            Message::ListPress(track) => self.play(track),
-            Message::ListSelectNext => self
-                .queue
-                .next(self.list.current())
-                .map_or(Task::none(), |track| self.play(track)),
-            Message::ListSelectPrevious => self
-                .queue
-                .previous(self.list.current())
-                .map_or(Task::none(), |track| self.play(track)),
-            Message::None => Task::none(),
-            Message::SearchTextInput(query) => {
-                self.list.search(query);
-                Task::none()
+            Message::ListPress(track) => return self.play(track),
+            Message::ListSelectNext => {
+                if let Some(track) = self.queue.next(self.list.current()) {
+                    return self.play(track);
+                }
             }
-            Message::SliderSeekbarChange(position) => {
-                self.seekbar_position = Some(position);
-                Task::none()
+            Message::ListSelectPrevious => {
+                if let Some(track) = self.queue.previous(self.list.current()) {
+                    return self.play(track);
+                }
             }
+            Message::None => {}
+            Message::SearchTextInput(query) => self.list.search(query),
+            Message::SliderSeekbarChange(position) => self.seekbar_position = Some(position),
             Message::SliderSeekbarRelease => {
                 if let Some(position) = self.seekbar_position.take() {
                     self.audio_player.try_seek(position);
                 }
-                Task::none()
             }
-            Message::SliderVolumeChange(volume) => {
-                self.audio_player.set_volume(volume);
-                Task::none()
-            }
+            Message::SliderVolumeChange(volume) => self.audio_player.set_volume(volume),
         }
+        Task::none()
     }
 
     fn view(&self) -> Element<'_, Message> {
@@ -467,11 +436,14 @@ impl Prism {
     }
 
     fn play(&mut self, track: Arc<Track>) -> Task<Message> {
-        if self.audio_player.play(&track).is_err() {
+        let Ok(audio_end_receiver) = self.audio_player.play(&track) else {
             return Task::none();
-        }
+        };
+
         self.list.set_current_and_selected(&track);
-        if let Some(bytes) = track::cover_from_file(&track.path) {
+
+        let audio_end_task = Task::run(audio_end_receiver, |_| Message::ListSelectNext);
+        let cover_task = if let Some(bytes) = track::cover_from_file(&track.path) {
             self.color_primary =
                 style::color_primary(image::load_from_memory(&bytes).ok().as_ref());
             widget::image::allocate(widget::image::Handle::from_bytes(bytes))
@@ -480,7 +452,9 @@ impl Prism {
             self.color_primary = style::COLOR_PRIMARY;
             self.cover_allocation = None;
             Task::none()
-        }
+        };
+
+        Task::batch([audio_end_task, cover_task])
     }
 
     fn playback(&self) -> Element<'_, Message> {
@@ -524,7 +498,7 @@ impl Prism {
 
     fn theme(&self) -> Theme {
         Theme::custom(
-            "Prism".to_string(),
+            "Prism",
             Seed {
                 background: style::COLOR_BACKGROUND,
                 primary: self.color_primary,

@@ -44,10 +44,10 @@ impl AudioPlayer {
 
     pub fn play(&self, track: &Track) -> Result<Receiver<()>, Box<dyn Error>> {
         let (audio_end_sender, audio_end_receiver) = channel::bounded(1);
-        let decoder = Decoder::new(File::open(&track.path)?)?;
         self.player.stop();
-        self.player
-            .append(decoder.amplify_decibel(track.replay_gain_f32()));
+        self.player.append(
+            Decoder::new(File::open(&track.path)?)?.amplify_decibel(track.replay_gain_f32()),
+        );
         self.player.append(EmptyCallback::new(Box::new(move || {
             audio_end_sender.try_send(()).ok();
         })));

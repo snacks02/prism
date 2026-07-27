@@ -35,13 +35,13 @@ fn from_directory(path: &Path) -> Vec<Track> {
 }
 
 fn from_file(path: &Path) -> Option<Track> {
-    let mut format = probe_file(path)?;
+    let mut format_reader = probe_file(path)?;
 
     let mut album = None;
     let mut artist = None;
     let mut replay_gain = None;
     let mut title = None;
-    if let Some(revision) = format.metadata().skip_to_latest() {
+    if let Some(revision) = format_reader.metadata().skip_to_latest() {
         for tag in &revision.media.tags {
             if let Some(standard_tag) = &tag.std {
                 match standard_tag {
@@ -57,13 +57,17 @@ fn from_file(path: &Path) -> Option<Track> {
         }
     }
 
-    let duration = format.default_track(TrackType::Audio).and_then(|track| {
-        track
-            .time_base?
-            .calc_time(Timestamp::try_from(track.duration?.get()).ok()?)
-            .and_then(|time| u64::try_from(time.as_nanos()).ok())
-            .map(Duration::from_nanos)
-    });
+    let duration = {
+        let track = format_reader.default_track(TrackType::Audio)?;
+        u64::try_from(
+            track
+                .time_base?
+                .calc_time(Timestamp::try_from(track.duration?.get()).ok()?)?
+                .as_nanos(),
+        )
+        .ok()
+        .map(Duration::from_nanos)
+    };
 
     Some(Track {
         album,

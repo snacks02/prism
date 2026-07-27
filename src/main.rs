@@ -34,7 +34,6 @@ use {
         time,
         widget,
         widget::{
-            Text,
             center,
             column,
             container,
@@ -124,7 +123,7 @@ enum Message {
     SliderVolumeChange(f32),
 }
 
-fn duration_text<'a>(seconds: f32) -> Text<'a> {
+fn duration_text<'a>(seconds: f32) -> Element<'a, Message> {
     let clamped_seconds = seconds.min(SEEKBAR_DURATION_CLAMP) as u32;
 
     text(format!(
@@ -139,6 +138,7 @@ fn duration_text<'a>(seconds: f32) -> Text<'a> {
     ))
     .align_x(Alignment::Center)
     .width(SEEKBAR_DURATION_WIDTH)
+    .into()
 }
 
 fn main() -> Result {
@@ -235,7 +235,7 @@ impl Composition for Prism {
         match message {
             Message::AudioEnd => {
                 if let Some(track) = self.queue.next(self.list.current()) {
-                    return self.play(track);
+                    return self.play(&track);
                 }
                 self.color_primary = style::COLOR_PRIMARY;
                 self.cover_allocation = None;
@@ -279,7 +279,7 @@ impl Composition for Prism {
             Message::KeyboardKeyArrowUpPress => self.list.select_previous(),
             Message::KeyboardKeyEnterPress => {
                 if let Some(track) = self.list.selected().cloned() {
-                    return self.play(track);
+                    return self.play(&track);
                 }
             }
             Message::ListClear => {
@@ -293,21 +293,21 @@ impl Composition for Prism {
                         window::request_user_attention(id, Some(UserAttention::Informational))
                     }),
                     if let (None, Some(track)) = (self.list.current(), self.queue.next(None)) {
-                        self.play(track)
+                        self.play(&track)
                     } else {
                         Task::none()
                     },
                 ]);
             }
-            Message::ListPress(track) => return self.play(track),
+            Message::ListPress(track) => return self.play(&track),
             Message::ListSelectNext => {
                 if let Some(track) = self.queue.next(self.list.current()) {
-                    return self.play(track);
+                    return self.play(&track);
                 }
             }
             Message::ListSelectPrevious => {
                 if let Some(track) = self.queue.previous(self.list.current()) {
-                    return self.play(track);
+                    return self.play(&track);
                 }
             }
             Message::None => {}
@@ -396,7 +396,7 @@ impl Prism {
     fn cover(&self) -> Element<'_, Message> {
         center(if let Some(allocation) = &self.cover_allocation {
             container(
-                widget::image(allocation.handle().clone())
+                widget::image(allocation.handle())
                     .border_radius(COVER_BORDER_RADIUS)
                     .height(COVER_SIZE)
                     .width(COVER_SIZE),
@@ -444,12 +444,12 @@ impl Prism {
         .into()
     }
 
-    fn play(&mut self, track: Arc<Track>) -> Task<Message> {
-        let Ok(audio_end_receiver) = self.audio_player.play(&track) else {
+    fn play(&mut self, track: &Arc<Track>) -> Task<Message> {
+        let Ok(audio_end_receiver) = self.audio_player.play(track) else {
             return Task::none();
         };
 
-        self.list.set_current_and_selected(Some(&track));
+        self.list.set_current_and_selected(Some(track));
 
         let audio_end_task = Task::run(audio_end_receiver, |_| Message::AudioEnd);
         let cover_task = if let Some(bytes) = track::cover_from_file(&track.path) {
@@ -488,7 +488,7 @@ impl Prism {
             .map_or(0.0, |track| track.duration_seconds());
         let position = self
             .seekbar_position
-            .unwrap_or_else(|| self.audio_player.position());
+            .unwrap_or(self.audio_player.position());
         row![
             duration_text(position),
             center(view_helper::slider(

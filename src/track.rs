@@ -17,7 +17,6 @@ use {
             },
             io::MediaSourceStream,
             meta::StandardTag,
-            units::Timestamp,
         },
         default,
     },
@@ -59,14 +58,9 @@ fn from_file(path: &Path) -> Option<Track> {
 
     let duration = {
         let track = format_reader.default_track(TrackType::Audio)?;
-        u64::try_from(
-            track
-                .time_base?
-                .calc_time(Timestamp::try_from(track.duration?.get()).ok()?)?
-                .as_nanos(),
-        )
-        .ok()
-        .map(Duration::from_nanos)
+        u64::try_from(track.time_base?.calc_duration(track.duration?)?.as_nanos())
+            .ok()
+            .map(Duration::from_nanos)
     };
 
     Some(Track {
